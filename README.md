@@ -1,65 +1,77 @@
-# CipherVault – Prototype (v1.0.1)
+# CipherVault – Protótipo (v1.2.0)
 
-Minimal CLI app to encrypt/decrypt a single file for yourself using RSA-4096 + AES-256-GCM.
+Aplicação CLI mínima para cifrar/decifrar um único ficheiro para uso próprio utilizando RSA-4096 + AES-256-GCM.
 
-## Prérequis
+## Pré-requisitos
 
 - Python 3.10+
-- Windows PowerShell (fourni) ou tout terminal
+- Windows PowerShell (fornecido) ou outro terminal
 
-## Installation
+## Instalação
 
-1) Créer/activer un environnement virtuel (optionnel mais recommandé)
-
-2) Installer les dépendances:
+1) Criar/ativar um ambiente virtual (opcional mas recomendado)
+2) Instalar dependências:
 
 ```
 pip install -r requirements.txt
 ```
 
-## Lancer le prototype
+## Executar o Protótipo
 
-Afficher le menu interactif (encrypt/decrypt):
+Menu interativo (cifrar/decifrar):
 
 ```
 python src/main.py
 ```
 
-Commandes directes:
+Comandos diretos:
 
 ```
-# Chiffrer pour vous-même
-python src/main.py encrypt <chemin_fichier>
+# Cifrar para si
+python src/main.py encrypt <caminho_ficheiro>
 
-# Déchiffrer un fichier .cvault
-python src/main.py decrypt <chemin_fichier.cvault>
+# Decifrar ficheiro .cvault
+python src/main.py decrypt <caminho_ficheiro.cvault>
 
-# Voir les clés et empreintes
+# Ver chaves e impressões digitais
 python src/main.py --debug keys
 
-# Afficher la version
+# Mostrar versão
 python src/main.py --version
 ```
 
-Notes:
-- Pour chiffrer un dossier, compressez-le d'abord en .zip ou .rar, puis chiffrez l'archive.
-- Les clés sont stockées sous: %USERPROFILE%\.ciphervault\ (clé privée et publique)
-- Mode debug: ajoutez `--debug` avant la commande (ex: `python src/main.py --debug encrypt ...`) pour afficher des logs détaillés (génération/chargement des clés, étapes de chiffrement/déchiffrement).
+Notas:
+- Para cifrar uma pasta, comprima primeiro em .zip ou .rar e depois cifre o arquivo resultante.
+- As chaves são guardadas em: %USERPROFILE%\.ciphervault\ (chave privada e pública)
+- Modo debug: adicione `--debug` antes do comando (ex.: `python src/main.py --debug encrypt ...`) para ver registos detalhados (geração/carregamento de chaves, etapas de cifragem/decifragem).
 
-## Versioning
+## Versionamento
 
-- Format: MAJEUR.MINEUR.CORRECTIF (ex: 1.0.1)
-- Règles:
-	- Correctif (+0.0.1): petites améliorations, logs, corrections mineures
-	- Mineur (+0.1.0): nouvelles fonctionnalités compatibles (ex: nouvelle commande)
-	- Majeur (+1.0.0): changements importants/incompatibles
- 
-Version actuelle: 1.0.1 (ajout des logs `--debug` et de la commande `keys`).
+- Formato: MAIOR.MENOR.CORRETIVO (ex.: 1.1.0)
+- Regras:
+  - Corretivo (+0.0.1): pequenas melhorias, registos, correções
+  - Menor (+0.1.0): novas funcionalidades compatíveis (ex.: novo comando)
+  - Maior (+1.0.0): alterações importantes/incompatíveis
 
-## Sécurité (résumé)
+Versão atual: 1.2.0 (janela CMD dedicada via ciphervault.cmd; docs PT-PT).
 
-- Données: AES-256-GCM (confidentialité + intégrité via tag)
-- Clé: chiffrée avec RSA-4096 OAEP (SHA-256)
-- Signature: RSA-PSS (SHA-256) sur le contenu original
+## Segurança (Resumo)
 
-Pour plus de théorie, voir `TEORIA_COMPLETA.md`.
+- Dados: AES-256-GCM (confidencialidade + integridade via tag)
+- Chave: envolvida com RSA-4096 OAEP (SHA-256)
+- Assinatura: RSA-PSS (SHA-256) sobre conteúdo original
+
+Para mais teoria, consultar `DOCUMENTACAO.md`.
+
+## Abrir uma janela CMD dedicada (Windows)
+
+Pode lançar uma janela própria do CipherVault com opções visíveis e arranque em modo interativo:
+
+```
+./ciphervault.cmd
+```
+
+Notas:
+- Se existir `.venv\Scripts\python.exe`, será usado automaticamente; caso contrário usa `python` do sistema.
+- O script mostra `--version`, depois `--help` e arranca o modo interativo.
+- No fim, a janela pede uma tecla para fechar.
