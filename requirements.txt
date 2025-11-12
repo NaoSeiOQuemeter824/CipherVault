@@ -1,0 +1,36 @@
+# ========================================
+# CipherVault - Application Standalone
+# ========================================
+# Installer avec: pip install -r requirements.txt
+# Puis l'app fonctionne directement !
+
+# Cryptographie (OBLIGATOIRE) - Inclut OpenSSL en interne
+cryptography==42.0.0
+
+# Hachage de mots de passe sécurisé (pour authentification)
+argon2-cffi==23.1.0
+
+# Interface utilisateur (CLI améliorée)
+click==8.1.7          # Pour interface ligne de commande professionnelle
+colorama==0.4.6       # Couleurs dans terminal (Windows compatible)
+rich==13.7.0          # Interface CLI belle et moderne
+
+# Barre de progression
+tqdm==4.66.1          # Pour afficher progression chiffrement
+
+# ========================================
+# Dépendances optionnelles
+# ========================================
+
+# GUI (Interface graphique) - Décommenter si nécessaire
+# PyQt6==6.6.1
+# ou tkinter (déjà inclus dans Python)
+
+# Base de données (si gestion d'utilisateurs)
+# python-dotenv==1.0.0  # Variables d'environnement
+# pydantic==2.5.3       # Validation de données
+
+# ========================================
+# Total: ~5 MB de dépendances
+# Application 100% standalone après installation !
+# ========================================
