@@ -7,6 +7,6 @@ Increment version numbers on meaningful changes:
  PATCH (1.0.X): small improvements / fixes / instrumentation
 """
 
-__version__ = "1.2.0"  # Janela CMD dedicada via script ciphervault.cmd
+__version__ = "1.2.1"  # CMD melhorado: menu persistente, ver chaves pública/privada
 
 __all__ = ["crypto", "__version__"]
