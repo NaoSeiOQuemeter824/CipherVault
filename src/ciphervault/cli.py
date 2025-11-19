@@ -19,7 +19,7 @@ from . import __version__
 # Fornece:
 #   - Grupo principal click com --debug e --version
 #   - Modo interativo persistente (menu loop) para operações simples
-#   - Comandos não interativos: encrypt, decrypt, keys, public-key, private-key
+#   - Comandos não interativos: encrypt, encrypt-for-contact, decrypt, keys, public-key, contacts-(list|add|delete)
 #   - Funções auxiliares para validação de caminhos e visualização de chaves
 #
 # Notas de Segurança:
@@ -61,26 +61,25 @@ def _interactive():
     """
     while True:
         console.clear()
-        console.print(Panel("[bold cyan]CipherVault Protótipo[/bold cyan]\nCifrar/Decifrar para si (RSA-4096 + AES-256-GCM)", expand=False))
+        console.print(Panel("[bold cyan]CipherVault Protótipo[/bold cyan]\nCifrar (self ou contacto) / Decifrar", expand=False))
         console.print("\n[bold]Ações:[/bold]")
-        console.print("  1) Cifrar ficheiro")
-        console.print("  2) Decifrar ficheiro .cvault")
-        console.print("  3) Ver chave [bold]pública[/bold]")
-        console.print("  4) Contactos (adicionar/listar/apagar)")
-        console.print("  5) Sair")
-        choice = Prompt.ask("Escolha", choices=["1", "2", "3", "4", "5"], default="1")
+        console.print("  1) Cifrar ficheiro (para mim)")
+        console.print("  2) Cifrar ficheiro para contacto")
+        console.print("  3) Decifrar ficheiro .cvault")
+        console.print("  4) Ver chave pública")
+        console.print("  5) Contactos (adicionar/listar/apagar)")
+        console.print("  6) Sair")
+        choice = Prompt.ask("Escolha", choices=["1", "2", "3", "4", "5", "6"], default="1")
         if choice == "1":
-            _encrypt_flow()
-            Prompt.ask("\nPrima Enter para voltar ao menu")
+            _encrypt_flow(); Prompt.ask("\nEnter para voltar ao menu")
         elif choice == "2":
-            _decrypt_flow()
-            Prompt.ask("\nPrima Enter para voltar ao menu")
+            _encrypt_for_contact_flow(); Prompt.ask("\nEnter para voltar ao menu")
         elif choice == "3":
-            _show_public_key()
-            Prompt.ask("\nPrima Enter para voltar ao menu")
+            _decrypt_flow(); Prompt.ask("\nEnter para voltar ao menu")
         elif choice == "4":
-            _contacts_menu()
-            # Ao sair dos Contactos, regressar imediatamente ao menu principal (sem pedir Enter)
+            _show_public_key(); Prompt.ask("\nEnter para voltar ao menu")
+        elif choice == "5":
+            _contacts_menu()  # regressa sem prompt extra
         else:
             sys.exit(0)
 
@@ -205,6 +204,41 @@ def _encrypt_flow():
         console.print(f"[red]Falha ao cifrar:[/red] {e}")
 
 
+def _encrypt_for_contact_flow():
+    """Fluxo interativo: cifrar ficheiro para um contacto (usa formato v2)."""
+    store = ContactsStore()
+    items = store.list_contacts()
+    if not items:
+        console.print("[red]Não há contactos. Adicione primeiro em 'Contactos'.[/red]")
+        return
+    table = Table(title="Escolha Contacto", show_lines=True)
+    table.add_column("#", style="cyan")
+    table.add_column("Nome", style="white")
+    table.add_column("Fingerprint", style="white")
+    for idx, c in enumerate(items, start=1):
+        table.add_row(str(idx), c.get("name",""), c.get("fingerprint","")[:32] + "…")
+    console.print(table)
+    choice_str = Prompt.ask("Número do contacto")
+    try:
+        idx = int(choice_str)
+        contact = items[idx-1]
+    except Exception:
+        console.print("[red]Seleção inválida[/red]")
+        return
+    path_str = Prompt.ask("Caminho do ficheiro a cifrar")
+    try:
+        in_path = _validate_input_path(path_str)
+    except click.BadParameter as e:
+        console.print(f"[red]Erro:[/red] {e}")
+        return
+    ks = KeyStore(); ks.ensure_keys(); se = SelfEncryptor(ks)
+    try:
+        out_path = se.encrypt_for_contact(in_path, contact["public_pem"].encode("utf-8"), recipient_name=contact.get("name"))
+        console.print(f"\n[green]Sucesso![/green] Cifrado para contacto '{contact.get('name')}' em: [bold]{out_path}[/bold]")
+    except Exception as e:
+        console.print(f"[red]Falha ao cifrar para contacto:[/red] {e}")
+
+
 def _decrypt_flow():
     """Fluxo interativo para decifrar contentor .cvault.
 
@@ -294,6 +328,22 @@ def public_key_cmd():
     """Imprimir chave pública em PEM."""
     ks = KeyStore(); ks.ensure_keys()
     console.print(ks.get_public_pem().decode("utf-8", errors="ignore"))
+
+@cli.command(name="encrypt-for-contact")
+@click.argument("path", type=click.Path(path_type=Path))
+@click.option("--name", required=True, help="Nome do contacto a usar")
+def encrypt_for_contact_cmd(path: Path, name: str):
+    """Cifrar um ficheiro para um contacto armazenado (formato v2)."""
+    store = ContactsStore()
+    contact = next((c for c in store.list_contacts() if c.get("name") == name), None)
+    if not contact:
+        raise click.ClickException("Contacto não encontrado")
+    p = path.expanduser().resolve()
+    if not p.exists() or not p.is_file():
+        raise click.ClickException("Caminho inválido para ficheiro")
+    ks = KeyStore(); ks.ensure_keys(); se = SelfEncryptor(ks)
+    out = se.encrypt_for_contact(p, contact["public_pem"].encode("utf-8"), recipient_name=name)
+    console.print(f"[green]Cifrado para '{name}':[/green] {out}")
 
 @cli.command(name="contacts-list")
 def contacts_list_cmd():
