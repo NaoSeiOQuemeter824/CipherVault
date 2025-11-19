@@ -573,3 +573,75 @@ class SelfEncryptor:
             "authenticity_ok": authenticity_ok,
             "integrity_ok": integrity_ok,
         }
+
+    def decrypt_to_bytes(self, vault_path: Path) -> tuple[bytes, dict]:
+        """Decifra um contentor .cvault e devolve (plaintext, metadata).
+
+        Verifica integridade e assinatura. Lança erros se algo falhar.
+        Não escreve o ficheiro no disco.
+        """
+        vault_path = Path(vault_path)
+        if not vault_path.exists() or not vault_path.is_file():
+            raise FileNotFoundError(f"Ficheiro não encontrado: {vault_path}")
+        with open(vault_path, "rb") as f:
+            magic = f.read(6)
+            if magic != self.MAGIC:
+                raise ValueError("Formato inválido (magic)")
+            version = struct.unpack("B", f.read(1))[0]
+            if version not in (self.VERSION_SELF, self.VERSION_CONTACT):
+                raise ValueError("Versão não suportada")
+            flags = struct.unpack("B", f.read(1))[0]
+            meta_len = struct.unpack("H", f.read(2))[0]
+            metadata = json.loads(f.read(meta_len).decode("utf-8"))
+            if version == self.VERSION_SELF:
+                pub_len = struct.unpack("H", f.read(2))[0]
+                sender_pub_pem = f.read(pub_len)
+                recipient_pub_pem = sender_pub_pem
+                key_len = struct.unpack("H", f.read(2))[0]
+                encrypted_aes_key = f.read(key_len)
+                sig_len = struct.unpack("H", f.read(2))[0]
+                signature = f.read(sig_len)
+                nonce = f.read(12)
+                tag = f.read(16)
+                ciphertext = f.read()
+            else:
+                sender_pub_len = struct.unpack("H", f.read(2))[0]
+                sender_pub_pem = f.read(sender_pub_len)
+                recipient_pub_len = struct.unpack("H", f.read(2))[0]
+                recipient_pub_pem = f.read(recipient_pub_len)
+                key_len = struct.unpack("H", f.read(2))[0]
+                encrypted_aes_key = f.read(key_len)
+                sig_len = struct.unpack("H", f.read(2))[0]
+                signature = f.read(sig_len)
+                nonce = f.read(12)
+                tag = f.read(16)
+                ciphertext = f.read()
+
+        if recipient_pub_pem != self.keystore.get_public_pem():
+            raise PermissionError("Contentor não destinado à sua chave")
+
+        aes_key = self.keystore.private_key.decrypt(
+            encrypted_aes_key,
+            padding.OAEP(
+                mgf=padding.MGF1(algorithm=hashes.SHA256()),
+                algorithm=hashes.SHA256(),
+                label=None,
+            ),
+        )
+        cipher = Cipher(algorithms.AES(aes_key), modes.GCM(nonce, tag))
+        decryptor = cipher.decryptor()
+        plaintext = decryptor.update(ciphertext) + decryptor.finalize()
+
+        sender_pub = serialization.load_pem_public_key(sender_pub_pem)
+        d = hashes.Hash(hashes.SHA256()); d.update(plaintext); file_hash = d.finalize()
+        sender_pub.verify(
+            signature,
+            file_hash,
+            padding.PSS(
+                mgf=padding.MGF1(hashes.SHA256()),
+                salt_length=padding.PSS.MAX_LENGTH,
+            ),
+            hashes.SHA256(),
+        )
+        metadata["version"] = version
+        return plaintext, metadata

@@ -1,4 +1,4 @@
-# CipherVault – Protótipo (v1.4.0)
+# CipherVault – Protótipo (v1.4.1)
 
 Aplicação CLI mínima para cifrar/decifrar/verificar um único ficheiro para uso próprio utilizando RSA-4096 + AES-256-GCM. Inclui gestão de contactos via ficheiro PEM, exportação da chave pública para partilha e cifrar “para um contacto”. Novo em 1.4.0: comando/verificação de autenticidade e integridade sem escrever o plaintext.
 
@@ -70,7 +70,7 @@ Notas:
   - Menor (+0.1.0): novas funcionalidades compatíveis (ex.: novo comando)
   - Maior (+1.0.0): alterações importantes/incompatíveis
 
-Versão atual: 1.4.0 (Verificação de autenticidade/integridade; exportar PEM público; contactos via ficheiro PEM; cifrar para contacto; docs PT-PT).
+Versão atual: 1.4.1 (Comparação de ficheiros e com contentor; verificação de autenticidade/integridade; exportar PEM público; contactos; cifrar para contacto; docs PT-PT).
 
 ## Segurança (Resumo)
 

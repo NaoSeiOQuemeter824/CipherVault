@@ -7,6 +7,6 @@ Increment version numbers on meaningful changes:
  PATCH (1.0.X): small improvements / fixes / instrumentation
 """
 
-__version__ = "1.4.0"  # Verificar autenticidade de ficheiros cifrados (verify)
+__version__ = "1.4.1"  # Adicionada comparação de ficheiros (detetar alteração)
 
 __all__ = ["crypto", "__version__"]

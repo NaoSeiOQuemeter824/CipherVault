@@ -1,4 +1,4 @@
-# CipherVault – Documentação Completa do Protótipo (v1.4.0)
+# CipherVault – Documentação Completa do Protótipo (v1.4.1)
 
 Este documento central reúne numa só referência tudo o que é necessário para
 compreender, explicar e justificar o funcionamento do protótipo CipherVault.
@@ -120,8 +120,8 @@ requirements.txt     -> lista de dependências Python
 
 ### Módulo `cli.py`
 - Grupo principal Click: parse de opções, ativação de debug.
-- Função `_interactive`: loop de menu: 1) Cifrar (self) 2) Cifrar para contacto 3) Decifrar 4) Partilhar chave (exportar PEM) 5) Contactos 6) Verificar autenticidade 7) Sair.
-- Comandos individuais: `encrypt`, `encrypt-for-contact`, `decrypt`, `verify`, `keys`, `public-key`, `export-public-key`, `contacts-list`, `contacts-add`, `contacts-delete`.
+- Função `_interactive`: loop de menu: 1) Cifrar (self) 2) Cifrar para contacto 3) Decifrar 4) Partilhar chave (exportar PEM) 5) Contactos 6) Verificar autenticidade 7) Comparar ficheiros 8) Sair.
+- Comandos individuais: `encrypt`, `encrypt-for-contact`, `decrypt`, `verify`, `compare-files`, `compare-with-vault`, `keys`, `public-key`, `export-public-key`, `contacts-list`, `contacts-add`, `contacts-delete`.
 - Auxiliares: normalização de caminhos, exportação PEM, contactos via ficheiro PEM.
 
 ### Módulo `contacts.py`
@@ -146,7 +146,7 @@ requirements.txt     -> lista de dependências Python
 - PEM para chave pública: legibilidade e interoperabilidade; poderá migrar para DER (opacidade) em versão 1.2.x.
 - Sem compressão automática: reduz complexidade; utilizador controla compressão (zip/rar) conforme necessidade.
 
-## Limitações Atuais (v1.4.0)
+## Limitações Atuais (v1.4.1)
 
 - Suporta um destinatário por contentor (cifragem para um contacto de cada vez).
 - Cabeçalho parcialmente legível (inclui PEM) – melhoria futura: versão opaca.
@@ -209,6 +209,7 @@ requirements.txt     -> lista de dependências Python
 - 1.3.0: Contactos (adicionar/listar/apagar); remoção de visualização da chave privada; atualização de CLI e lançador.
 - 1.3.1: Exportar chave pública para ficheiro PEM; adicionar contactos via caminho para ficheiro PEM; cifrar para um contacto (formato v2).
 - 1.4.0: Comando `verify` para verificação de autenticidade/integridade sem escrever ficheiro decifrado.
+- 1.4.1: Comandos `compare-files` (comparação direta SHA-256) e `compare-with-vault` (comparar conteúdo decifrado de .cvault com ficheiro claro).
 
 ## Esquema de Versionamento
 

@@ -1,6 +1,7 @@
 import sys
 import logging
 import json
+import hashlib
 from pathlib import Path
 
 import click
@@ -70,8 +71,9 @@ def _interactive():
         console.print("  4) Partilhar a minha chave pública (exportar PEM)")
         console.print("  5) Contactos (adicionar/listar/apagar)")
         console.print("  6) Verificar autenticidade de ficheiro .cvault")
-        console.print("  7) Sair")
-        choice = Prompt.ask("Escolha", choices=["1", "2", "3", "4", "5", "6", "7"], default="1")
+        console.print("  7) Comparar dois ficheiros (detetar alteração)")
+        console.print("  8) Sair")
+        choice = Prompt.ask("Escolha", choices=["1", "2", "3", "4", "5", "6", "7", "8"], default="1")
         if choice == "1":
             _encrypt_flow(); Prompt.ask("\nEnter para voltar ao menu")
         elif choice == "2":
@@ -84,6 +86,8 @@ def _interactive():
             _contacts_menu()  # regressa sem prompt extra
         elif choice == "6":
             _verify_flow(); Prompt.ask("\nEnter para voltar ao menu")
+        elif choice == "7":
+            _compare_files_flow(); Prompt.ask("\nEnter para voltar ao menu")
         else:
             sys.exit(0)
 
@@ -299,6 +303,31 @@ def _verify_flow():
     else:
         console.print("[red]Integridade falhou - conteúdo não confiável.[/red]")
 
+def _compare_files_flow():
+    """Compara dois ficheiros claros e mostra SHA-256 e se são iguais."""
+    console.print("\n[bold]Comparar dois ficheiros[/bold]")
+    a_path = Path(_clean_path(Prompt.ask("Ficheiro A"))).expanduser().resolve()
+    b_path = Path(_clean_path(Prompt.ask("Ficheiro B"))).expanduser().resolve()
+    if not a_path.exists() or not a_path.is_file() or not b_path.exists() or not b_path.is_file():
+        console.print("[red]Indique caminhos válidos para ambos os ficheiros[/red]")
+        return
+    a_bytes = a_path.read_bytes(); b_bytes = b_path.read_bytes()
+    h_a = hashlib.sha256(a_bytes).hexdigest(); h_b = hashlib.sha256(b_bytes).hexdigest()
+    iguais = h_a == h_b
+    table = Table(title="Resultado da Comparação", show_lines=True)
+    table.add_column("Campo", style="cyan")
+    table.add_column("Valor", style="white")
+    table.add_row("Ficheiro A", str(a_path))
+    table.add_row("Ficheiro B", str(b_path))
+    table.add_row("SHA256(A)", h_a)
+    table.add_row("SHA256(B)", h_b)
+    table.add_row("Iguais?", "SIM" if iguais else "NAO")
+    console.print(table)
+    if iguais:
+        console.print("[green]Os ficheiros são idênticos.[/green]")
+    else:
+        console.print("[yellow]Os ficheiros diferem (conteúdo alterado).[/yellow]")
+
 
 @cli.command()
 @click.argument("path", type=click.Path(path_type=Path))
@@ -414,6 +443,42 @@ def verify_cmd(vault_file: Path):
         result = se.verify_authenticity(p)
     except Exception as e:
         raise click.ClickException(f"Falha na verificação: {e}")
+    console.print(json.dumps(result, indent=2, ensure_ascii=False))
+
+@cli.command(name="compare-files")
+@click.argument("file_a", type=click.Path(path_type=Path))
+@click.argument("file_b", type=click.Path(path_type=Path))
+def compare_files_cmd(file_a: Path, file_b: Path):
+    """Comparar dois ficheiros claros (SHA-256)."""
+    a = file_a.expanduser().resolve(); b = file_b.expanduser().resolve()
+    if not a.exists() or not a.is_file() or not b.exists() or not b.is_file():
+        raise click.ClickException("Indique caminhos válidos para ambos os ficheiros")
+    a_bytes = a.read_bytes(); b_bytes = b.read_bytes()
+    h_a = hashlib.sha256(a_bytes).hexdigest(); h_b = hashlib.sha256(b_bytes).hexdigest()
+    iguais = h_a == h_b
+    result = {"file_a": str(a), "file_b": str(b), "sha256_a": h_a, "sha256_b": h_b, "iguais": iguais}
+    console.print(json.dumps(result, indent=2, ensure_ascii=False))
+
+@cli.command(name="compare-with-vault")
+@click.argument("vault_file", type=click.Path(path_type=Path))
+@click.argument("file_plain", type=click.Path(path_type=Path))
+def compare_with_vault_cmd(vault_file: Path, file_plain: Path):
+    """Compara plaintext fornecido com conteúdo decifrado de um .cvault (deteta alteração)."""
+    ks = KeyStore(); ks.ensure_keys(); se = SelfEncryptor(ks)
+    v = vault_file.expanduser().resolve(); p = file_plain.expanduser().resolve()
+    if not v.exists() or not v.is_file() or v.suffix != ".cvault":
+        raise click.ClickException("Indique um .cvault válido")
+    if not p.exists() or not p.is_file():
+        raise click.ClickException("Indique um ficheiro claro válido")
+    try:
+        vault_plain, meta = se.decrypt_to_bytes(v)
+    except Exception as e:
+        raise click.ClickException(f"Falha ao decifrar contentor: {e}")
+    given_bytes = p.read_bytes()
+    h_v = hashlib.sha256(vault_plain).hexdigest()
+    h_p = hashlib.sha256(given_bytes).hexdigest()
+    iguais = h_v == h_p
+    result = {"vault_file": str(v), "plain_file": str(p), "sha256_vault_plain": h_v, "sha256_plain": h_p, "iguais": iguais, "metadata": meta}
     console.print(json.dumps(result, indent=2, ensure_ascii=False))
 
 @cli.command(name="contacts-list")
