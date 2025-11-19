@@ -1,6 +1,6 @@
-# CipherVault – Protótipo (v1.3.0)
+# CipherVault – Protótipo (v1.3.1)
 
-Aplicação CLI mínima para cifrar/decifrar um único ficheiro para uso próprio utilizando RSA-4096 + AES-256-GCM. Inclui gestão local de contactos (nome + chave pública) para futura partilha.
+Aplicação CLI mínima para cifrar/decifrar um único ficheiro para uso próprio utilizando RSA-4096 + AES-256-GCM. Inclui gestão de contactos via ficheiro PEM e exportação da chave pública para partilha. Suporta cifrar “para um contacto”.
 
 ## Pré-requisitos
 
@@ -39,13 +39,19 @@ python src/main.py --debug keys
 # Mostrar versão
 python src/main.py --version
 
-# Ver chave pública
+# Ver chave pública no terminal
 python src/main.py public-key
+
+# Exportar a minha chave pública para ficheiro PEM (partilha)
+python src/main.py export-public-key --out "C:\\Users\\Tu\\Documents\\CipherVault_public_key.pem"
 
 # Contactos (gestão local)
 python src/main.py contacts-list
 python src/main.py contacts-add --name "NOME" --pubkey "caminho/para/public.pem"
 python src/main.py contacts-delete --name "NOME"
+
+# Cifrar para um contacto (usa a chave pública do contacto)
+python src/main.py encrypt-for-contact <caminho_ficheiro> --name "NOME"
 ```
 
 Notas:
@@ -61,7 +67,7 @@ Notas:
   - Menor (+0.1.0): novas funcionalidades compatíveis (ex.: novo comando)
   - Maior (+1.0.0): alterações importantes/incompatíveis
 
-Versão atual: 1.3.0 (Contactos: adicionar/listar/apagar; removida visualização de chave privada; docs PT-PT).
+Versão atual: 1.3.1 (Exportar PEM público; contactos via ficheiro PEM; cifrar para contacto; docs PT-PT).
 
 ## Segurança (Resumo)
 

@@ -1,4 +1,4 @@
-# CipherVault – Documentação Completa do Protótipo (v1.3.0)
+# CipherVault – Documentação Completa do Protótipo (v1.3.1)
 
 Este documento central reúne numa só referência tudo o que é necessário para
 compreender, explicar e justificar o funcionamento do protótipo CipherVault.
@@ -8,11 +8,11 @@ organizado por módulos, comandos CLI, segurança, limitações e roadmap.
 ## Objetivo
 
 - Fornecer uma aplicação simples de linha de comandos para proteger ficheiros locais.
-- Cifrar e decifrar apenas “para o próprio” (self) na versão 1.3.0.
+- Cifrar e decifrar “para o próprio” (self) e cifrar “para um contacto” na versão 1.3.1.
 - Usar uma abordagem criptográfica moderna e segura (híbrida: simétrica + assimétrica).
 - Manter um formato de contentor único (`.cvault`) auto‑descritivo.
 - Facilitar futura evolução para multi-destinatários e funcionalidades adicionais.
- - Gerir contactos (nome + chave pública) localmente para futura partilha.
+ - Gerir contactos (nome + chave pública) localmente via ficheiro PEM e exportar a própria chave pública para partilha.
 
 ## Arquitetura
 
@@ -22,7 +22,7 @@ organizado por módulos, comandos CLI, segurança, limitações e roadmap.
 - Armazenamento local das chaves: `~/.ciphervault/` contendo `private_key.pem` e `public_key.pem`.
 - Código organizado em módulos (`crypto.py` para operações de baixo nível, `cli.py` para interface e fluxo de utilização).
 
-### Fluxo de Cifragem (“para mim”)
+### Fluxo de Cifragem (“para mim”, v1)
 
 1. Ler o ficheiro original (plaintext).
 2. Gerar chave AES-256 aleatória (32 bytes) e nonce GCM (12 bytes).
@@ -30,6 +30,17 @@ organizado por módulos, comandos CLI, segurança, limitações e roadmap.
 4. Envolver a chave AES com a chave pública RSA-4096 do utilizador (OAEP/SHA-256).
 5. Calcular hash SHA-256 do plaintext e assinar com a chave privada (RSA-PSS).
 6. Construir e escrever o ficheiro `.cvault` com a estrutura definida.
+
+### Fluxo de Cifragem para Contacto (v2)
+
+1. Ler o ficheiro original (plaintext).
+2. Gerar chave AES-256 aleatória (32 bytes) e nonce GCM (12 bytes).
+3. Cifrar o plaintext com AES-256-GCM → ciphertext + tag.
+4. Envolver a chave AES com a chave pública do contacto (RSA-OAEP/SHA-256).
+5. Calcular hash SHA-256 do plaintext e assinar com a chave privada do remetente (RSA-PSS).
+6. Construir o `.cvault` v2 com chaves públicas do remetente e do destinatário.
+
+O destinatário decifra a chave AES com a sua chave privada e valida a assinatura com a chave pública do remetente embutida.
 
 ### Fluxo de Decifragem
 
@@ -65,6 +76,14 @@ Se qualquer verificação falhar (tag ou assinatura), o processo termina com err
 Racional: formato direto facilita debugging e futura migração para cabeçalho
 opaco (ex.: DER/CBOR) sem perder legibilidade interna do protótipo.
 
+#### Variante v2 (para contacto)
+
+Campos (ordem):
+1) Magic; 2) Versão=2; 3) Flags; 4) Meta_len; 5) Metadados `{filename,size,sender_fp,recipient_fp,recipient_name?}`;
+6) SenderPub_len; 7) SenderPub PEM; 8) RecipientPub_len; 9) RecipientPub PEM; 10) AES_wrapped_len; 11) AES_wrapped; 12) Sig_len; 13) Signature; 14) Nonce; 15) Tag; 16) Ciphertext.
+
+Racional: permite cifrar para um destinatário externo preservando a autenticação do remetente.
+
 ## Estrutura de Diretórios e Papéis
 
 ```
@@ -88,9 +107,9 @@ requirements.txt     -> lista de dependências Python
 
 ### Módulo `cli.py`
 - Grupo principal Click: parse de opções, ativação de debug.
-- Função `_interactive`: loop de menu (1. cifrar 2. decifrar 3. ver chave pública 4. contactos 5. sair).
-- Comandos individuais: `encrypt`, `decrypt`, `keys`, `public-key`, `contacts-list`, `contacts-add`, `contacts-delete`.
-- Auxiliares: normalização de caminhos, visualização de PEM (apenas pública) e fluxos de contactos.
+- Função `_interactive`: loop de menu: 1) Cifrar (self) 2) Cifrar para contacto 3) Decifrar 4) Partilhar chave (exportar PEM) 5) Contactos 6) Sair.
+- Comandos individuais: `encrypt`, `encrypt-for-contact`, `decrypt`, `keys`, `public-key`, `export-public-key`, `contacts-list`, `contacts-add`, `contacts-delete`.
+- Auxiliares: normalização de caminhos, exportação PEM, contactos via ficheiro PEM.
 
 ### Módulo `contacts.py`
 - `ContactsStore`: armazena contactos em `~/.ciphervault/contacts.json`.
@@ -103,7 +122,7 @@ requirements.txt     -> lista de dependências Python
 
 ### `ciphervault.cmd`
 - Conveniência Windows: abre consola separada e inicia modo interativo.
-- Mostra versão, ajuda, e exemplos rápidos incluindo comandos de contactos.
+- Mostra versão, ajuda, e exemplos rápidos (incluindo contactos). Pode ser estendido para mostrar `export-public-key`.
 
 ## Opções Técnicas e Justificação
 
@@ -114,14 +133,14 @@ requirements.txt     -> lista de dependências Python
 - PEM para chave pública: legibilidade e interoperabilidade; poderá migrar para DER (opacidade) em versão 1.2.x.
 - Sem compressão automática: reduz complexidade; utilizador controla compressão (zip/rar) conforme necessidade.
 
-## Limitações Atuais (v1.3.0)
+## Limitações Atuais (v1.3.1)
 
-- Apenas modo “self” (sem destinatários externos).
+- Suporta um destinatário por contentor (cifragem para um contacto de cada vez).
 - Cabeçalho parcialmente legível (inclui PEM) – melhoria futura: versão opaca.
 - Não suporta cifragem de múltiplos ficheiros em lote num único contentor.
 - Chave privada sem proteção adicional (ex.: password / hardware token).
 - Não há verificação de revogação/rotação automática de chaves.
- - Contactos servem apenas para gestão local; não há envio/cifragem para contactos nesta versão.
+ - Requer que o utilizador possua o ficheiro PEM da chave pública do contacto.
 
 ## Roadmap Proposto
 
@@ -171,6 +190,7 @@ requirements.txt     -> lista de dependências Python
 - 1.2.0: Menu interativo persistente; lançador `ciphervault.cmd`.
 - 1.2.1: Visualização de chave pública/privada via menu e comandos (`public-key`, `private-key`) + comentários detalhados no código.
 - 1.3.0: Contactos (adicionar/listar/apagar); remoção de visualização da chave privada; atualização de CLI e lançador.
+- 1.3.1: Exportar chave pública para ficheiro PEM; adicionar contactos via caminho para ficheiro PEM; cifrar para um contacto (formato v2) e verificar autenticidade do remetente.
 
 ## Esquema de Versionamento
 
@@ -186,8 +206,8 @@ Facilita verificação e não prejudica segurança; apenas a chave privada permi
 **Porque assinar o plaintext e não o ciphertext?**
 Assinar o plaintext torna explícita a integridade do conteúdo original e evita dependência do modo simétrico para autenticação completa.
 
-**Posso partilhar .cvault atual com outra pessoa?**
-Não; só contém a chave pública do autor. Precisará de versão multi-destinatários.
+**Posso partilhar um `.cvault` com outra pessoa?**
+Sim, se o contentor tiver sido cifrado “para esse contacto” (v2). Para isso, primeiro obtenha o ficheiro PEM da chave pública do destinatário, adicione-o como contacto e use a opção “Cifrar para contacto”.
 
 **O que acontece se alterar um byte do ficheiro?**
 Tag GCM ou assinatura falham – o processo acusa corrupção.
@@ -195,8 +215,8 @@ Tag GCM ou assinatura falham – o processo acusa corrupção.
 **Posso cifrar pastas diretamente?**
 Não; comprima primeiro (zip/rar) para obter um único ficheiro.
 
-**Para que servem os Contactos nesta versão?**
-Apenas para gerir localmente chaves públicas de terceiros (validadas e com fingerprint). A cifragem para contactos não está ainda disponível.
+**O que é um ficheiro PEM?**
+Formato de texto legível com cabeçalhos/rodapés (BEGIN/END PUBLIC KEY) contendo a chave em Base64. É o padrão para partilha de chaves públicas.
 
 ---
 
