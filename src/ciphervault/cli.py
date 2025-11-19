@@ -1,5 +1,6 @@
 import sys
 import logging
+import json
 from pathlib import Path
 
 import click
@@ -19,8 +20,7 @@ from . import __version__
 # Fornece:
 #   - Grupo principal click com --debug e --version
 #   - Modo interativo persistente (menu loop) para operações simples
-#   - Comandos não interativos: encrypt, encrypt-for-contact, decrypt, keys, public-key, contacts-(list|add|delete)
-#   - Comandos não interativos: encrypt, encrypt-for-contact, decrypt, keys, public-key, export-public-key, contacts-(list|add|delete)
+#   - Comandos não interativos: encrypt, encrypt-for-contact, decrypt, keys, public-key, export-public-key, verify, contacts-(list|add|delete)
 #   - Funções auxiliares para validação de caminhos e visualização de chaves
 #
 # Notas de Segurança:
@@ -69,8 +69,9 @@ def _interactive():
         console.print("  3) Decifrar ficheiro .cvault")
         console.print("  4) Partilhar a minha chave pública (exportar PEM)")
         console.print("  5) Contactos (adicionar/listar/apagar)")
-        console.print("  6) Sair")
-        choice = Prompt.ask("Escolha", choices=["1", "2", "3", "4", "5", "6"], default="1")
+        console.print("  6) Verificar autenticidade de ficheiro .cvault")
+        console.print("  7) Sair")
+        choice = Prompt.ask("Escolha", choices=["1", "2", "3", "4", "5", "6", "7"], default="1")
         if choice == "1":
             _encrypt_flow(); Prompt.ask("\nEnter para voltar ao menu")
         elif choice == "2":
@@ -81,6 +82,8 @@ def _interactive():
             _export_public_key_flow(); Prompt.ask("\nEnter para voltar ao menu")
         elif choice == "5":
             _contacts_menu()  # regressa sem prompt extra
+        elif choice == "6":
+            _verify_flow(); Prompt.ask("\nEnter para voltar ao menu")
         else:
             sys.exit(0)
 
@@ -263,6 +266,39 @@ def _decrypt_flow():
     except Exception as e:
         console.print(f"[red]Falha ao decifrar:[/red] {e}")
 
+def _verify_flow():
+    """Fluxo interativo para verificar autenticidade/integridade sem escrever plaintext."""
+    ks = KeyStore(); ks.ensure_keys(); se = SelfEncryptor(ks)
+    console.print("\nIntroduza o [bold]caminho para o ficheiro .cvault[/bold] a verificar:")
+    path_str = Prompt.ask("Caminho do ficheiro .cvault")
+    cleaned = _clean_path(path_str)
+    p = Path(cleaned).expanduser().resolve()
+    if not p.exists() or not p.is_file() or p.suffix != ".cvault":
+        console.print("[red]Indique um caminho válido para um ficheiro .cvault[/red]")
+        return
+    try:
+        result = se.verify_authenticity(p)
+    except Exception as e:
+        console.print(f"[red]Falha na verificação:[/red] {e}")
+        return
+    table = Table(title="Resultado da Verificação", show_lines=True)
+    table.add_column("Campo", style="cyan")
+    table.add_column("Valor", style="white")
+    table.add_row("Versão", str(result.get("version")))
+    table.add_row("Filename", str(result.get("filename")))
+    table.add_row("Size", str(result.get("size")))
+    table.add_row("Sender FP", str(result.get("sender_fp"))[0:32] + "…")
+    table.add_row("Recipient FP", str(result.get("recipient_fp"))[0:32] + "…")
+    table.add_row("Integridade GCM", "OK" if result.get("integrity_ok") else "FALHA")
+    table.add_row("Autenticidade PSS", "OK" if result.get("authenticity_ok") else "FALHA")
+    console.print(table)
+    if result.get("integrity_ok") and result.get("authenticity_ok"):
+        console.print("[green]Ficheiro autêntico e íntegro.[/green]")
+    elif result.get("integrity_ok") and not result.get("authenticity_ok"):
+        console.print("[yellow]Integridade ok, MAS assinatura inválida.[/yellow]")
+    else:
+        console.print("[red]Integridade falhou - conteúdo não confiável.[/red]")
+
 
 @cli.command()
 @click.argument("path", type=click.Path(path_type=Path))
@@ -365,6 +401,20 @@ def encrypt_for_contact_cmd(path: Path, name: str):
     ks = KeyStore(); ks.ensure_keys(); se = SelfEncryptor(ks)
     out = se.encrypt_for_contact(p, contact["public_pem"].encode("utf-8"), recipient_name=name)
     console.print(f"[green]Cifrado para '{name}':[/green] {out}")
+
+@cli.command(name="verify")
+@click.argument("vault_file", type=click.Path(path_type=Path))
+def verify_cmd(vault_file: Path):
+    """Verificar autenticidade e integridade de um ficheiro .cvault (JSON)."""
+    ks = KeyStore(); ks.ensure_keys(); se = SelfEncryptor(ks)
+    p = vault_file.expanduser().resolve()
+    if not p.exists() or not p.is_file() or p.suffix != ".cvault":
+        raise click.ClickException("Indique um caminho válido para um ficheiro .cvault")
+    try:
+        result = se.verify_authenticity(p)
+    except Exception as e:
+        raise click.ClickException(f"Falha na verificação: {e}")
+    console.print(json.dumps(result, indent=2, ensure_ascii=False))
 
 @cli.command(name="contacts-list")
 def contacts_list_cmd():

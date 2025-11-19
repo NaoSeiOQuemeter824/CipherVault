@@ -466,3 +466,110 @@ class SelfEncryptor:
         Path(output_path).write_bytes(plaintext)
         logger.debug(f"Ficheiro decifrado escrito: {output_path} (tamanho={len(plaintext)} bytes)")
         return output_path
+
+    def verify_authenticity(self, vault_path: Path) -> dict:
+        """Verifica a autenticidade (assinatura RSA-PSS) e integridade (tag GCM) de um contentor.
+
+        Não escreve o plaintext decifrado. Retorna dicionário com:
+          {
+            'version': <int>,
+            'filename': <str>,
+            'size': <int>,
+            'sender_fp': <str>,
+            'recipient_fp': <str>,
+            'authenticity_ok': <bool>,
+            'integrity_ok': <bool>
+          }
+        Lança exceções em caso de formato inválido ou destinatário incorreto.
+        """
+        vault_path = Path(vault_path)
+        if not vault_path.exists() or not vault_path.is_file():
+            raise FileNotFoundError(f"Ficheiro não encontrado: {vault_path}")
+
+        with open(vault_path, "rb") as f:
+            magic = f.read(6)
+            if magic != self.MAGIC:
+                raise ValueError("Formato de ficheiro inválido (magic)")
+            version = struct.unpack("B", f.read(1))[0]
+            if version not in (self.VERSION_SELF, self.VERSION_CONTACT):
+                raise ValueError(f"Versão não suportada: {version}")
+            flags = struct.unpack("B", f.read(1))[0]
+            meta_len = struct.unpack("H", f.read(2))[0]
+            metadata = json.loads(f.read(meta_len).decode("utf-8"))
+            if version == self.VERSION_SELF:
+                sender_pub_len = struct.unpack("H", f.read(2))[0]
+                sender_pub_pem = f.read(sender_pub_len)
+                recipient_pub_pem = sender_pub_pem
+                key_len = struct.unpack("H", f.read(2))[0]
+                encrypted_aes_key = f.read(key_len)
+                sig_len = struct.unpack("H", f.read(2))[0]
+                signature = f.read(sig_len)
+                nonce = f.read(12)
+                tag = f.read(16)
+                ciphertext = f.read()
+            else:  # VERSION_CONTACT
+                sender_pub_len = struct.unpack("H", f.read(2))[0]
+                sender_pub_pem = f.read(sender_pub_len)
+                recipient_pub_len = struct.unpack("H", f.read(2))[0]
+                recipient_pub_pem = f.read(recipient_pub_len)
+                key_len = struct.unpack("H", f.read(2))[0]
+                encrypted_aes_key = f.read(key_len)
+                sig_len = struct.unpack("H", f.read(2))[0]
+                signature = f.read(sig_len)
+                nonce = f.read(12)
+                tag = f.read(16)
+                ciphertext = f.read()
+
+        my_pub_pem = self.keystore.get_public_pem()
+        if recipient_pub_pem != my_pub_pem:
+            raise PermissionError("Este ficheiro não foi cifrado para a SUA chave pública.")
+
+        # Integridade (GCM): tentar decifrar; se falhar lança exceção
+        aes_key = self.keystore.private_key.decrypt(
+            encrypted_aes_key,
+            padding.OAEP(
+                mgf=padding.MGF1(algorithm=hashes.SHA256()),
+                algorithm=hashes.SHA256(),
+                label=None,
+            ),
+        )
+        integrity_ok = True
+        try:
+            cipher = Cipher(algorithms.AES(aes_key), modes.GCM(nonce, tag))
+            decryptor = cipher.decryptor()
+            plaintext = decryptor.update(ciphertext) + decryptor.finalize()
+        except Exception:
+            integrity_ok = False
+            plaintext = b""
+
+        sender_pub = serialization.load_pem_public_key(sender_pub_pem)
+        d = hashes.Hash(hashes.SHA256()); d.update(plaintext); file_hash = d.finalize()
+        authenticity_ok = False
+        if integrity_ok:
+            try:
+                sender_pub.verify(
+                    signature,
+                    file_hash,
+                    padding.PSS(
+                        mgf=padding.MGF1(hashes.SHA256()),
+                        salt_length=padding.PSS.MAX_LENGTH,
+                    ),
+                    hashes.SHA256(),
+                )
+                authenticity_ok = True
+            except Exception:
+                authenticity_ok = False
+
+        # Fingerprints
+        sd = hashes.Hash(hashes.SHA256()); sd.update(sender_pub_pem); sender_fp = sd.finalize().hex()
+        rd = hashes.Hash(hashes.SHA256()); rd.update(recipient_pub_pem); recipient_fp = rd.finalize().hex()
+
+        return {
+            "version": version,
+            "filename": metadata.get("filename"),
+            "size": metadata.get("size"),
+            "sender_fp": sender_fp,
+            "recipient_fp": recipient_fp,
+            "authenticity_ok": authenticity_ok,
+            "integrity_ok": integrity_ok,
+        }

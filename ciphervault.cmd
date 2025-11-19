@@ -21,6 +21,7 @@ echo   - Ver chave publica:      python src\main.py public-key
 echo   - Contactos - listar:     python src\main.py contacts-list
 echo   - Contactos - adicionar:  python src\main.py contacts-add --name "NOME" --pubkey "caminho\para\public.pem"
 echo   - Contactos - apagar:     python src\main.py contacts-delete --name "NOME"
+echo   - Verificar autenticidade: python src\main.py verify "ficheiro.cvault"
 echo.
 echo A iniciar modo interativo...
 "%PYEXE%" src\main.py

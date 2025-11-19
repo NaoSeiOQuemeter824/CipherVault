@@ -7,6 +7,6 @@ Increment version numbers on meaningful changes:
  PATCH (1.0.X): small improvements / fixes / instrumentation
 """
 
-__version__ = "1.3.1"  # Partilha simplificada: exportar PEM público; contactos via ficheiro
+__version__ = "1.4.0"  # Verificar autenticidade de ficheiros cifrados (verify)
 
 __all__ = ["crypto", "__version__"]

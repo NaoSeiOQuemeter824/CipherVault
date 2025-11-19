@@ -1,6 +1,6 @@
-# CipherVault – Protótipo (v1.3.1)
+# CipherVault – Protótipo (v1.4.0)
 
-Aplicação CLI mínima para cifrar/decifrar um único ficheiro para uso próprio utilizando RSA-4096 + AES-256-GCM. Inclui gestão de contactos via ficheiro PEM e exportação da chave pública para partilha. Suporta cifrar “para um contacto”.
+Aplicação CLI mínima para cifrar/decifrar/verificar um único ficheiro para uso próprio utilizando RSA-4096 + AES-256-GCM. Inclui gestão de contactos via ficheiro PEM, exportação da chave pública para partilha e cifrar “para um contacto”. Novo em 1.4.0: comando/verificação de autenticidade e integridade sem escrever o plaintext.
 
 ## Pré-requisitos
 
@@ -32,6 +32,9 @@ python src/main.py encrypt <caminho_ficheiro>
 
 # Decifrar ficheiro .cvault
 python src/main.py decrypt <caminho_ficheiro.cvault>
+
+# Verificar autenticidade/integridade (não produz ficheiro decifrado)
+python src/main.py verify <caminho_ficheiro.cvault>
 
 # Ver chaves e impressões digitais
 python src/main.py --debug keys
@@ -67,7 +70,7 @@ Notas:
   - Menor (+0.1.0): novas funcionalidades compatíveis (ex.: novo comando)
   - Maior (+1.0.0): alterações importantes/incompatíveis
 
-Versão atual: 1.3.1 (Exportar PEM público; contactos via ficheiro PEM; cifrar para contacto; docs PT-PT).
+Versão atual: 1.4.0 (Verificação de autenticidade/integridade; exportar PEM público; contactos via ficheiro PEM; cifrar para contacto; docs PT-PT).
 
 ## Segurança (Resumo)
 

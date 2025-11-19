@@ -1,4 +1,4 @@
-# CipherVault – Documentação Completa do Protótipo (v1.3.1)
+# CipherVault – Documentação Completa do Protótipo (v1.4.0)
 
 Este documento central reúne numa só referência tudo o que é necessário para
 compreender, explicar e justificar o funcionamento do protótipo CipherVault.
@@ -8,7 +8,7 @@ organizado por módulos, comandos CLI, segurança, limitações e roadmap.
 ## Objetivo
 
 - Fornecer uma aplicação simples de linha de comandos para proteger ficheiros locais.
-- Cifrar e decifrar “para o próprio” (self) e cifrar “para um contacto” na versão 1.3.1.
+- Cifrar e decifrar “para o próprio” (self), cifrar “para um contacto” e verificar autenticidade/integridade na versão 1.4.0.
 - Usar uma abordagem criptográfica moderna e segura (híbrida: simétrica + assimétrica).
 - Manter um formato de contentor único (`.cvault`) auto‑descritivo.
 - Facilitar futura evolução para multi-destinatários e funcionalidades adicionais.
@@ -53,6 +53,19 @@ O destinatário decifra a chave AES com a sua chave privada e valida a assinatur
 7. Escrever ficheiro restaurado.
 
 Se qualquer verificação falhar (tag ou assinatura), o processo termina com erro.
+
+### Fluxo de Verificação (novo em 1.4.0)
+
+Objetivo: validar rapidamente se um ficheiro `.cvault` é autêntico (assinatura RSA-PSS válida) e íntegro (tag GCM válida) sem restaurar o plaintext para disco.
+
+Passos:
+1. Ler e validar cabeçalho.
+2. Decifrar chave AES (RSA-OAEP).
+3. Tentar decifrar ciphertext com AES-256-GCM (se falhar, integridade falha).
+4. Se integridade ok, recalcular hash SHA-256 do plaintext e verificar assinatura RSA-PSS.
+5. Reportar JSON com `authenticity_ok`, `integrity_ok`, versão, filename e fingerprints.
+
+Benefício: permite inspeção de confiança antes de consumir/escrever dados.
 
 ### Estrutura Binária do Contentor `.cvault`
 
@@ -107,8 +120,8 @@ requirements.txt     -> lista de dependências Python
 
 ### Módulo `cli.py`
 - Grupo principal Click: parse de opções, ativação de debug.
-- Função `_interactive`: loop de menu: 1) Cifrar (self) 2) Cifrar para contacto 3) Decifrar 4) Partilhar chave (exportar PEM) 5) Contactos 6) Sair.
-- Comandos individuais: `encrypt`, `encrypt-for-contact`, `decrypt`, `keys`, `public-key`, `export-public-key`, `contacts-list`, `contacts-add`, `contacts-delete`.
+- Função `_interactive`: loop de menu: 1) Cifrar (self) 2) Cifrar para contacto 3) Decifrar 4) Partilhar chave (exportar PEM) 5) Contactos 6) Verificar autenticidade 7) Sair.
+- Comandos individuais: `encrypt`, `encrypt-for-contact`, `decrypt`, `verify`, `keys`, `public-key`, `export-public-key`, `contacts-list`, `contacts-add`, `contacts-delete`.
 - Auxiliares: normalização de caminhos, exportação PEM, contactos via ficheiro PEM.
 
 ### Módulo `contacts.py`
@@ -133,7 +146,7 @@ requirements.txt     -> lista de dependências Python
 - PEM para chave pública: legibilidade e interoperabilidade; poderá migrar para DER (opacidade) em versão 1.2.x.
 - Sem compressão automática: reduz complexidade; utilizador controla compressão (zip/rar) conforme necessidade.
 
-## Limitações Atuais (v1.3.1)
+## Limitações Atuais (v1.4.0)
 
 - Suporta um destinatário por contentor (cifragem para um contacto de cada vez).
 - Cabeçalho parcialmente legível (inclui PEM) – melhoria futura: versão opaca.
@@ -153,10 +166,14 @@ requirements.txt     -> lista de dependências Python
 - Gestão de contactos local (adicionar/listar/apagar) com validação do PEM público e fingerprint.
 - Remoção da visualização de chave privada no CLI (redução de superfície de risco).
 
-### 1.4.0 (Planeado)
+### 1.4.1 (Planeado)
+- Comando de inspeção detalhada (`inspect`) sem decifrar para disco (metadados completos, fingerprints).
+- Base para multi-destinatários (design do bloco extra de chave).
+
+### 1.5.0 (Planeado)
 - Multi-destinatários: vários blocos de chave AES envolvida (um por chave pública).
 - Flag `--also-me` para incluir o remetente como destinatário explícito.
-- Comando para adicionar novo destinatário a contentor existente (re-envelopar chave AES).
+- Re-envelopar chave AES para adicionar destinatário posterior.
 
 ### 1.5.x
 - Modo assinatura apenas (gerar ficheiro + assinatura separada .sig).
@@ -190,7 +207,8 @@ requirements.txt     -> lista de dependências Python
 - 1.2.0: Menu interativo persistente; lançador `ciphervault.cmd`.
 - 1.2.1: Visualização de chave pública/privada via menu e comandos (`public-key`, `private-key`) + comentários detalhados no código.
 - 1.3.0: Contactos (adicionar/listar/apagar); remoção de visualização da chave privada; atualização de CLI e lançador.
-- 1.3.1: Exportar chave pública para ficheiro PEM; adicionar contactos via caminho para ficheiro PEM; cifrar para um contacto (formato v2) e verificar autenticidade do remetente.
+- 1.3.1: Exportar chave pública para ficheiro PEM; adicionar contactos via caminho para ficheiro PEM; cifrar para um contacto (formato v2).
+- 1.4.0: Comando `verify` para verificação de autenticidade/integridade sem escrever ficheiro decifrado.
 
 ## Esquema de Versionamento
 
