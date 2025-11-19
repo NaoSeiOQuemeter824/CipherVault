@@ -80,7 +80,7 @@ def _interactive():
             Prompt.ask("\nPrima Enter para voltar ao menu")
         elif choice == "4":
             _contacts_menu()
-            Prompt.ask("\nPrima Enter para voltar ao menu")
+            # Ao sair dos Contactos, regressar imediatamente ao menu principal (sem pedir Enter)
         else:
             sys.exit(0)
 
