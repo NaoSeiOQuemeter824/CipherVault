@@ -1,6 +1,6 @@
-# CipherVault – Protótipo (v1.2.0)
+# CipherVault – Protótipo (v1.3.0)
 
-Aplicação CLI mínima para cifrar/decifrar um único ficheiro para uso próprio utilizando RSA-4096 + AES-256-GCM.
+Aplicação CLI mínima para cifrar/decifrar um único ficheiro para uso próprio utilizando RSA-4096 + AES-256-GCM. Inclui gestão local de contactos (nome + chave pública) para futura partilha.
 
 ## Pré-requisitos
 
@@ -38,6 +38,14 @@ python src/main.py --debug keys
 
 # Mostrar versão
 python src/main.py --version
+
+# Ver chave pública
+python src/main.py public-key
+
+# Contactos (gestão local)
+python src/main.py contacts-list
+python src/main.py contacts-add --name "NOME" --pubkey "caminho/para/public.pem"
+python src/main.py contacts-delete --name "NOME"
 ```
 
 Notas:
@@ -53,7 +61,7 @@ Notas:
   - Menor (+0.1.0): novas funcionalidades compatíveis (ex.: novo comando)
   - Maior (+1.0.0): alterações importantes/incompatíveis
 
-Versão atual: 1.2.0 (janela CMD dedicada via ciphervault.cmd; docs PT-PT).
+Versão atual: 1.3.0 (Contactos: adicionar/listar/apagar; removida visualização de chave privada; docs PT-PT).
 
 ## Segurança (Resumo)
 
@@ -73,5 +81,5 @@ Pode lançar uma janela própria do CipherVault com opções visíveis e arranqu
 
 Notas:
 - Se existir `.venv\Scripts\python.exe`, será usado automaticamente; caso contrário usa `python` do sistema.
-- O script mostra `--version`, depois `--help` e arranca o modo interativo.
+- O script mostra `--version`, depois `--help`, exemplos de contactos e arranca o modo interativo.
 - No fim, a janela pede uma tecla para fechar.

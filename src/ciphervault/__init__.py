@@ -7,6 +7,6 @@ Increment version numbers on meaningful changes:
  PATCH (1.0.X): small improvements / fixes / instrumentation
 """
 
-__version__ = "1.2.1"  # CMD melhorado: menu persistente, ver chaves pública/privada
+__version__ = "1.3.0"  # Contactos: adicionar/listar/apagar; remover ver chave privada
 
 __all__ = ["crypto", "__version__"]

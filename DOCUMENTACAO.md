@@ -1,90 +1,206 @@
-# CipherVault – Documentação do Protótipo (v1.1.0)
+# CipherVault – Documentação Completa do Protótipo (v1.3.0)
 
-Este documento descreve o que foi implementado no primeiro protótipo e as próximas evoluções possíveis.
+Este documento central reúne numa só referência tudo o que é necessário para
+compreender, explicar e justificar o funcionamento do protótipo CipherVault.
+Inclui: objetivos, arquitetura, formato de ficheiro, fluxo interno, código
+organizado por módulos, comandos CLI, segurança, limitações e roadmap.
 
 ## Objetivo
 
-- Disponibilizar uma aplicação de linha de comandos simples
-- Permitir selecionar um ficheiro (ex.: arquivo .zip/.rar para pastas, imagens ou qualquer ficheiro)
-- Cifrar/Decifrar apenas para o próprio (sem partilha ainda) via cifragem híbrida
+- Fornecer uma aplicação simples de linha de comandos para proteger ficheiros locais.
+- Cifrar e decifrar apenas “para o próprio” (self) na versão 1.3.0.
+- Usar uma abordagem criptográfica moderna e segura (híbrida: simétrica + assimétrica).
+- Manter um formato de contentor único (`.cvault`) auto‑descritivo.
+- Facilitar futura evolução para multi-destinatários e funcionalidades adicionais.
+ - Gerir contactos (nome + chave pública) localmente para futura partilha.
 
 ## Arquitetura
 
-- RSA-4096 (assimétrico) + AES-256-GCM (simétrico)
-- Formato de contentor único: `.cvault`
-- Armazenamento das chaves: `~/.ciphervault/` (chave privada + chave pública)
+- Criptografia híbrida: RSA-4096 (assimétrico) + AES-256-GCM (simétrico).
+- Controlo de autenticidade: assinatura RSA-PSS sobre hash SHA-256 do conteúdo original.
+- Contentor `.cvault`: inclui metadados, chave pública, chave AES envolvida, assinatura, nonce, tag e ciphertext.
+- Armazenamento local das chaves: `~/.ciphervault/` contendo `private_key.pem` e `public_key.pem`.
+- Código organizado em módulos (`crypto.py` para operações de baixo nível, `cli.py` para interface e fluxo de utilização).
 
-### Fluxo de Cifragem (cifrar para si)
+### Fluxo de Cifragem (“para mim”)
 
-1. Gerar chave AES aleatória de 256 bits + nonce GCM de 96 bits
-2. Cifrar o conteúdo com AES-256-GCM (confidencialidade + integridade via tag)
-3. Cifrar a chave AES com a chave pública RSA-4096 do utilizador (OAEP/SHA-256)
-4. Assinar o hash SHA-256 do conteúdo original com a chave privada (RSA-PSS)
-5. Escrever o ficheiro `.cvault` contendo metadados + chave pública + chave AES cifrada + assinatura + nonce + tag + ciphertext
+1. Ler o ficheiro original (plaintext).
+2. Gerar chave AES-256 aleatória (32 bytes) e nonce GCM (12 bytes).
+3. Cifrar o plaintext com AES-256-GCM → produz ciphertext + tag de integridade.
+4. Envolver a chave AES com a chave pública RSA-4096 do utilizador (OAEP/SHA-256).
+5. Calcular hash SHA-256 do plaintext e assinar com a chave privada (RSA-PSS).
+6. Construir e escrever o ficheiro `.cvault` com a estrutura definida.
 
 ### Fluxo de Decifragem
 
-1. Verificar o formato `.cvault`
-2. Verificar que a chave pública embutida corresponde realmente à do utilizador local
-3. Decifrar a chave AES com a chave privada
-4. Decifrar o conteúdo AES-256-GCM (falha se tag inválida ⇒ conteúdo corrompido)
-5. Verificar a assinatura (RSA-PSS) sobre o conteúdo decifrado
-6. Escrever o ficheiro original
+1. Ler e validar cabeçalho (`Magic`, versão, flags).
+2. Recuperar metadados e chave pública embutida.
+3. Confirmar que a chave pública do contentor coincide com a chave local (garante que foi cifrado “para mim”).
+4. Decifrar a chave AES com a chave privada (RSA-OAEP).
+5. Decifrar dados com AES-256-GCM (verificando a tag de integridade).
+6. Recalcular hash do plaintext e verificar assinatura RSA-PSS.
+7. Escrever ficheiro restaurado.
 
-## Estrutura de Diretórios
+Se qualquer verificação falhar (tag ou assinatura), o processo termina com erro.
+
+### Estrutura Binária do Contentor `.cvault`
+
+| Ordem | Campo | Tamanho | Descrição |
+|-------|-------|---------|-----------|
+| 1 | Magic | 6 | `CVAULT` identificação|
+| 2 | Versão | 1 | Versão de formato |
+| 3 | Flags | 1 | bit0=1 cifrado (reserva futura) |
+| 4 | Meta_len | 2 | uint16 tamanho do JSON |
+| 5 | Metadados | n | JSON `{filename,size}` |
+| 6 | Pub_len | 2 | uint16 tamanho PEM chave pública |
+| 7 | PubKey PEM | n | Chave pública do autor |
+| 8 | AES_wrap_len | 2 | uint16 tamanho chave AES envolvida |
+| 9 | AES_wrapped | n | Chave AES cifrada RSA-OAEP |
+|10 | Sig_len | 2 | uint16 tamanho assinatura |
+|11 | Assinatura | n | RSA-PSS(SHA-256) sobre plaintext |
+|12 | Nonce | 12 | Nonce GCM (96 bits) |
+|13 | Tag | 16 | Tag GCM (integridade simétrica) |
+|14 | Ciphertext | resto | Dados cifrados |
+
+Racional: formato direto facilita debugging e futura migração para cabeçalho
+opaco (ex.: DER/CBOR) sem perder legibilidade interna do protótipo.
+
+## Estrutura de Diretórios e Papéis
 
 ```
 src/
   ciphervault/
-    __init__.py
-    crypto.py      # lógica criptográfica: gestão de chaves, cifrar/decifrar
-    cli.py         # interface CLI mínima (interativo + comandos cifrar/decifrar)
-  main.py          # ponto de entrada `python src/main.py`
+    __init__.py      -> expõe __version__
+    crypto.py        -> operações criptográficas (KeyStore, SelfEncryptor)
+    contacts.py      -> gestão de contactos (persistência JSON, validação PEM)
+    cli.py           -> interface CLI (menu interativo + comandos diretos)
+  main.py            -> ponto de entrada simplificado
 
-DOCUMENTACAO.md     # este documento
-README.md           # instruções de execução
-requirements.txt    # dependências
+ciphervault.cmd      -> lançador Windows (abre menu persistente)
+DOCUMENTACAO.md      -> documentação completa (este ficheiro)
+README.md            -> instruções rápidas de uso
+requirements.txt     -> lista de dependências Python
 ```
 
-## Opções Técnicas
+### Módulo `crypto.py`
+- `KeyStore`: garante existência e carregamento das chaves, gera fingerprint.
+- `SelfEncryptor`: implementa cifrar e decifrar para o próprio; constrói/parceia o formato.
 
-- RSA-4096 + OAEP(SHA-256) para envolver a chave AES
-- AES-256-GCM para cifrar dados e garantir integridade (tag 16 bytes)
-- Assinatura RSA-PSS (SHA-256) para autenticar o autor e detetar alteração
-- Sem compressão automática: para cifrar uma pasta o utilizador cria primeiro um `.zip` ou `.rar`
+### Módulo `cli.py`
+- Grupo principal Click: parse de opções, ativação de debug.
+- Função `_interactive`: loop de menu (1. cifrar 2. decifrar 3. ver chave pública 4. contactos 5. sair).
+- Comandos individuais: `encrypt`, `decrypt`, `keys`, `public-key`, `contacts-list`, `contacts-add`, `contacts-delete`.
+- Auxiliares: normalização de caminhos, visualização de PEM (apenas pública) e fluxos de contactos.
 
-## Limitações Atuais (v1.1.0)
+### Módulo `contacts.py`
+- `ContactsStore`: armazena contactos em `~/.ciphervault/contacts.json`.
+  - Cada contacto contém: `name`, `public_pem` (PEM), `fingerprint` (SHA-256 em hex do PEM).
+  - Valida se o PEM fornecido é uma chave pública válida.
+  - Operações: `add_contact`, `list_contacts`, `delete_contact`.
 
-- Sem interface gráfica: apenas CLI
-- Sem opções avançadas: fluxo básico cifrar/decifrar para si
-- Pastas não suportadas diretamente (usar .zip/.rar manualmente)
-- Ainda sem modo "para destinatário" nem "assinatura apenas"
+### `main.py`
+- Proxy para `cli()` permitindo `python src/main.py`.
 
-## Próximos Passos Sugeridos
+### `ciphervault.cmd`
+- Conveniência Windows: abre consola separada e inicia modo interativo.
+- Mostra versão, ajuda, e exemplos rápidos incluindo comandos de contactos.
 
-- Adicionar modo "para destinatário" (chave pública externa) e multi-destinatários
-- Adicionar modo "assinatura apenas" para partilha pública autenticada
-- Personalização de caminhos de saída e validações adicionais
-- Detetar automaticamente tipos de ficheiros (imagens, arquivos) para melhor UX
-- Empacotar CLI (entry point) e criar binário executável
+## Opções Técnicas e Justificação
 
-## Segurança – Resumo
+- RSA-4096 OAEP(SHA-256): segurança contra ataques de padding e robustez futura.
+- AES-256-GCM: padrão industrial (AEAD) evitando necessidade separada de HMAC.
+- RSA-PSS (SHA-256): assinatura moderna com randomização, mitigando ataques de forja.
+- Fingerprint SHA-256: identificação humana rápida; pode evoluir para ID truncado etiquetado.
+- PEM para chave pública: legibilidade e interoperabilidade; poderá migrar para DER (opacidade) em versão 1.2.x.
+- Sem compressão automática: reduz complexidade; utilizador controla compressão (zip/rar) conforme necessidade.
 
-- Confidencialidade: AES-256-GCM
-- Integridade: Tag GCM + verificação de assinatura
-- Autenticidade: Assinatura RSA-PSS sobre hash do conteúdo original
+## Limitações Atuais (v1.3.0)
+
+- Apenas modo “self” (sem destinatários externos).
+- Cabeçalho parcialmente legível (inclui PEM) – melhoria futura: versão opaca.
+- Não suporta cifragem de múltiplos ficheiros em lote num único contentor.
+- Chave privada sem proteção adicional (ex.: password / hardware token).
+- Não há verificação de revogação/rotação automática de chaves.
+ - Contactos servem apenas para gestão local; não há envio/cifragem para contactos nesta versão.
+
+## Roadmap Proposto
+
+### 1.2.x (Incremental)
+- Cabeçalho binário opaco (DER/CBOR) ou substituição PEM por fingerprint.
+- Opção de saída personalizada (`--out` / escolha no menu).
+- Modo “ver detalhes” do contentor (inspeção sem decifrar total).
+
+### 1.3.0 (Funcionalidade Nova)
+- Gestão de contactos local (adicionar/listar/apagar) com validação do PEM público e fingerprint.
+- Remoção da visualização de chave privada no CLI (redução de superfície de risco).
+
+### 1.4.0 (Planeado)
+- Multi-destinatários: vários blocos de chave AES envolvida (um por chave pública).
+- Flag `--also-me` para incluir o remetente como destinatário explícito.
+- Comando para adicionar novo destinatário a contentor existente (re-envelopar chave AES).
+
+### 1.5.x
+- Modo assinatura apenas (gerar ficheiro + assinatura separada .sig).
+- Integração opcional com hash de diretórios e manifestos.
+
+### 2.0.0 (Potencial)
+- Reformulação do formato com estrutura escalável (TLV / CBOR com índice).
+- Rotação de chaves e metadados de política (algoritmos permitidos, expiração).
+
+## Segurança – Resumo Executivo
+
+- Confidencialidade: AES-256-GCM protege o conteúdo.
+- Integridade: Tag GCM + assinatura RSA-PSS (dupla verificação: simétrica e assimétrica).
+- Autenticidade: Garantida pela assinatura do plaintext (origem + não alteração).
+
+### Detalhe dos Primitivos
+- AES-256-GCM: modo AEAD; nonce único por cifragem (12 bytes). Reutilização de nonce com mesma chave é perigosa – mitigado pela geração aleatória.
+- RSA-OAEP: adiciona máscara (MGF1) e digest para prevenir ataques de texto escolhido.
+- RSA-PSS: usa salt aleatório, evitando determinismo e aumentando resistência a ataques.
+- SHA-256: equilibrado entre segurança e ubiquidade.
+
+### Superfície de Ataque e Mitigações
+- Exposição da chave privada ⇒ comprometimento total. Mitigação futura: password / HSM.
+- Modificação do contentor ⇒ assinatura ou tag falham (detetado).
+- Colisões intencionais de fingerprint (SHA-256) são impraticáveis com recursos normais.
 
 ## Notas de Versão
 
-- 1.0.1: Logs de debug, comando `keys`, versão exposta na CLI
-- 1.1.0: Tradução completa da documentação e comentários para PT-PT
+- 1.0.1: Logs de debug, comando `keys`, versão CLI.
+- 1.1.0: Tradução inicial documentação e mensagens PT-PT.
+- 1.2.0: Menu interativo persistente; lançador `ciphervault.cmd`.
+- 1.2.1: Visualização de chave pública/privada via menu e comandos (`public-key`, `private-key`) + comentários detalhados no código.
+- 1.3.0: Contactos (adicionar/listar/apagar); remoção de visualização da chave privada; atualização de CLI e lançador.
 
-## Próximos Incrementos de Versão
+## Esquema de Versionamento
 
-- Patch (ex.: 1.1.1): pequenas melhorias
-- Minor (ex.: 1.2.0): novas funcionalidades compatíveis (ex.: modo destinatário)
-- Major (ex.: 2.0.0): mudanças potencialmente incompatíveis (novo formato .cvault)
+- Patch (x.y.Z): correções e melhorias pequenas sem alterar formato.
+- Minor (x.Y.z): novas funcionalidades compatíveis (ex.: multi-destinatários, cabeçalho opaco).
+- Major (X.y.z): mudanças de formato ou quebra de compatibilidade (ex.: estrutura binária radicalmente diferente).
+
+## FAQ Rápida
+
+**Porque é visível a chave pública no contentor?**
+Facilita verificação e não prejudica segurança; apenas a chave privada permite decifrar.
+
+**Porque assinar o plaintext e não o ciphertext?**
+Assinar o plaintext torna explícita a integridade do conteúdo original e evita dependência do modo simétrico para autenticação completa.
+
+**Posso partilhar .cvault atual com outra pessoa?**
+Não; só contém a chave pública do autor. Precisará de versão multi-destinatários.
+
+**O que acontece se alterar um byte do ficheiro?**
+Tag GCM ou assinatura falham – o processo acusa corrupção.
+
+**Posso cifrar pastas diretamente?**
+Não; comprima primeiro (zip/rar) para obter um único ficheiro.
+
+**Para que servem os Contactos nesta versão?**
+Apenas para gerir localmente chaves públicas de terceiros (validadas e com fingerprint). A cifragem para contactos não está ainda disponível.
 
 ---
 
-Se precisar de detalhes adicionais teóricos ou provas de conceito de outros modos (multi-recipient, streaming), podemos expandir em documentos separados.
+---
+
+Para detalhes adicionais (multi-destinatários, cabeçalhos binários, integração
+com manifestos ou assinatura isolada) evoluir conforme roadmap descrito.

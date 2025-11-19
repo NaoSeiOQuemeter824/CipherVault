@@ -17,8 +17,10 @@ echo Opcoes disponiveis (menu interativo mantem-se apos cada acao):
 "%PYEXE%" src\main.py --help
 echo.
 echo Comandos extra:
-echo   - Ver chave publica:   python src\main.py public-key
-echo   - Ver chave privada:   python src\main.py private-key
+echo   - Ver chave publica:      python src\main.py public-key
+echo   - Contactos - listar:     python src\main.py contacts-list
+echo   - Contactos - adicionar:  python src\main.py contacts-add --name "NOME" --pubkey "caminho\para\public.pem"
+echo   - Contactos - apagar:     python src\main.py contacts-delete --name "NOME"
 echo.
 echo A iniciar modo interativo...
 "%PYEXE%" src\main.py

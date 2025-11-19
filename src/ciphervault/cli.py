@@ -10,7 +10,23 @@ from rich.prompt import Prompt
 from rich.table import Table
 
 from .crypto import KeyStore, SelfEncryptor
+from .contacts import ContactsStore
 from . import __version__
+
+# =============================================================
+# Módulo cli
+# -------------------------------------------------------------
+# Fornece:
+#   - Grupo principal click com --debug e --version
+#   - Modo interativo persistente (menu loop) para operações simples
+#   - Comandos não interativos: encrypt, decrypt, keys, public-key, private-key
+#   - Funções auxiliares para validação de caminhos e visualização de chaves
+#
+# Notas de Segurança:
+#   - Expor a chave privada só deve ser feito conscientemente; acrescentado
+#     painel de aviso e confirmação explícita.
+#   - Chave pública é segura para divulgação / embutida no contentor.
+# =============================================================
 
 console = Console()
 
@@ -38,6 +54,11 @@ def cli(ctx, debug: bool):
 
 
 def _interactive():
+    """Loop de menu interativo.
+
+    Permite ao utilizador repetir operações sucessivamente sem relançar
+    o processo. Cada escolha devolve ao menu após conclusão.
+    """
     while True:
         console.clear()
         console.print(Panel("[bold cyan]CipherVault Protótipo[/bold cyan]\nCifrar/Decifrar para si (RSA-4096 + AES-256-GCM)", expand=False))
@@ -45,7 +66,7 @@ def _interactive():
         console.print("  1) Cifrar ficheiro")
         console.print("  2) Decifrar ficheiro .cvault")
         console.print("  3) Ver chave [bold]pública[/bold]")
-        console.print("  4) Ver chave [bold]privada[/bold] (aviso de segurança)")
+        console.print("  4) Contactos (adicionar/listar/apagar)")
         console.print("  5) Sair")
         choice = Prompt.ask("Escolha", choices=["1", "2", "3", "4", "5"], default="1")
         if choice == "1":
@@ -58,39 +79,89 @@ def _interactive():
             _show_public_key()
             Prompt.ask("\nPrima Enter para voltar ao menu")
         elif choice == "4":
-            _show_private_key()
+            _contacts_menu()
             Prompt.ask("\nPrima Enter para voltar ao menu")
         else:
             sys.exit(0)
 
 
 def _show_public_key():
+    """Mostra a chave pública em PEM (sem riscos de confidencialidade)."""
     ks = KeyStore(); ks.ensure_keys()
     pem = ks.get_public_pem().decode("utf-8", errors="ignore")
     panel = Panel(pem, title="Chave Pública (PEM)", expand=False)
     console.print(panel)
 
 
-def _show_private_key():
-    console.print(Panel("[red]AVISO[/red]: revelar a [bold]chave privada[/bold] é um risco elevado. Prossiga apenas se compreender as consequências.", title="Aviso de Segurança", expand=False))
-    resp = Prompt.ask("Mostrar chave privada?", choices=["sim", "nao"], default="nao")
-    if resp != "sim":
-        console.print("Operação cancelada.")
+def _contacts_menu():
+    store = ContactsStore()
+    while True:
+        console.clear()
+        console.print(Panel("[bold cyan]Contactos[/bold cyan]", expand=False))
+        console.print("  1) Adicionar contacto")
+        console.print("  2) Listar contactos")
+        console.print("  3) Apagar contacto")
+        console.print("  4) Voltar")
+        c = Prompt.ask("Escolha", choices=["1", "2", "3", "4"], default="2")
+        if c == "1":
+            _contact_add_flow(store)
+            Prompt.ask("\nEnter para continuar")
+        elif c == "2":
+            _contact_list_flow(store)
+            Prompt.ask("\nEnter para continuar")
+        elif c == "3":
+            _contact_delete_flow(store)
+            Prompt.ask("\nEnter para continuar")
+        else:
+            break
+
+def _contact_add_flow(store: ContactsStore):
+    console.print("\n[bold]Adicionar novo contacto[/bold]")
+    name = Prompt.ask("Nome do contacto")
+    pem_path = Prompt.ask("Caminho para a chave pública (PEM)")
+    p = Path(_clean_path(pem_path)).expanduser().resolve()
+    if not p.exists() or not p.is_file():
+        console.print("[red]Caminho inválido para PEM[/red]")
         return
-    ks = KeyStore(); ks.ensure_keys()
+    pem = p.read_text(encoding="utf-8", errors="ignore")
     try:
-        pem = ks.private_key.private_bytes(
-            encoding=serialization.Encoding.PEM,
-            format=serialization.PrivateFormat.PKCS8,
-            encryption_algorithm=serialization.NoEncryption(),
-        ).decode("utf-8", errors="ignore")
-        console.print(Panel(pem, title="Chave Privada (PEM)", expand=False))
+        store.add_contact(name, pem)
+        console.print("[green]Contacto adicionado com sucesso[/green]")
     except Exception as e:
-        console.print(f"[red]Falha ao obter chave privada:[/red] {e}")
+        console.print(f"[red]Falha ao adicionar:[/red] {e}")
+
+def _contact_list_flow(store: ContactsStore):
+    items = store.list_contacts()
+    table = Table(title="Contactos", show_lines=True)
+    table.add_column("Nome", style="cyan", no_wrap=True)
+    table.add_column("Fingerprint (SHA-256)", style="white")
+    table.add_column("Excerto PEM", style="white")
+    for c in items:
+        pem_lines = (c.get("public_pem") or "").splitlines()
+        snippet = []
+        if pem_lines:
+            snippet.append(pem_lines[0])
+        if len(pem_lines) > 1:
+            snippet.append("…")
+            snippet.append(pem_lines[-1])
+        table.add_row(c.get("name", ""), c.get("fingerprint", ""), "\n".join(snippet))
+    console.print(table)
+
+def _contact_delete_flow(store: ContactsStore):
+    name = Prompt.ask("Nome do contacto a apagar")
+    ok = store.delete_contact(name)
+    if ok:
+        console.print("[yellow]Contacto removido[/yellow]")
+    else:
+        console.print("[red]Nenhum contacto com esse nome[/red]")
 
 
 def _clean_path(path_str: str) -> str:
-    """Normaliza um caminho introduzido: remove espaços e aspas exteriores."""
+    """Normaliza caminho introduzido removendo aspas exteriores e espaços.
+
+    Objetivo: tolerar colagem de caminhos provenientes do Explorador
+    do Windows que frequentemente incluem aspas.
+    """
     if path_str is None:
         return ""
     s = path_str.strip()
@@ -111,6 +182,10 @@ def _validate_input_path(path_str: str) -> Path:
 
 
 def _encrypt_flow():
+    """Fluxo interativo para cifrar um único ficheiro.
+
+    Recolhe caminho, valida, executa cifragem híbrida e reporta resultado.
+    """
     ks = KeyStore()
     ks.ensure_keys()
     se = SelfEncryptor(ks)
@@ -131,6 +206,10 @@ def _encrypt_flow():
 
 
 def _decrypt_flow():
+    """Fluxo interativo para decifrar contentor .cvault.
+
+    Valida extensão, decifra, verifica assinatura e escreve ficheiro original.
+    """
     ks = KeyStore()
     ks.ensure_keys()
     se = SelfEncryptor(ks)
@@ -216,8 +295,30 @@ def public_key_cmd():
     ks = KeyStore(); ks.ensure_keys()
     console.print(ks.get_public_pem().decode("utf-8", errors="ignore"))
 
+@cli.command(name="contacts-list")
+def contacts_list_cmd():
+    """Listar contactos guardados."""
+    store = ContactsStore()
+    _contact_list_flow(store)
 
-@cli.command(name="private-key")
-def private_key_cmd():
-    """Imprimir chave privada em PEM (não recomendado)."""
-    _show_private_key()
+@cli.command(name="contacts-add")
+@click.option("--name", required=True, help="Nome do contacto")
+@click.option("--pubkey", type=click.Path(path_type=Path), required=True, help="Caminho para PEM da chave pública")
+def contacts_add_cmd(name: str, pubkey: Path):
+    """Adicionar um contacto (nome + chave pública PEM)."""
+    store = ContactsStore()
+    p = pubkey.expanduser().resolve()
+    if not p.exists() or not p.is_file():
+        raise click.ClickException("Caminho inválido para PEM")
+    pem = p.read_text(encoding="utf-8", errors="ignore")
+    store.add_contact(name, pem)
+    console.print("[green]Contacto adicionado[/green]")
+
+@cli.command(name="contacts-delete")
+@click.option("--name", required=True, help="Nome do contacto a apagar")
+def contacts_delete_cmd(name: str):
+    """Apagar um contacto pelo nome."""
+    store = ContactsStore()
+    if not store.delete_contact(name):
+        raise click.ClickException("Contacto não encontrado")
+    console.print("[yellow]Contacto removido[/yellow]")
