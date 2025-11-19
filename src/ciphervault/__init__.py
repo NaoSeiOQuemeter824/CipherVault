@@ -7,6 +7,6 @@ Increment version numbers on meaningful changes:
  PATCH (1.0.X): small improvements / fixes / instrumentation
 """
 
-__version__ = "1.3.0"  # Contactos: adicionar/listar/apagar; remover ver chave privada
+__version__ = "1.3.1"  # Partilha simplificada: exportar PEM público; contactos via ficheiro
 
 __all__ = ["crypto", "__version__"]

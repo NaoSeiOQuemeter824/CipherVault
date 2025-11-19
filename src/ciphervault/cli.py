@@ -20,6 +20,7 @@ from . import __version__
 #   - Grupo principal click com --debug e --version
 #   - Modo interativo persistente (menu loop) para operações simples
 #   - Comandos não interativos: encrypt, encrypt-for-contact, decrypt, keys, public-key, contacts-(list|add|delete)
+#   - Comandos não interativos: encrypt, encrypt-for-contact, decrypt, keys, public-key, export-public-key, contacts-(list|add|delete)
 #   - Funções auxiliares para validação de caminhos e visualização de chaves
 #
 # Notas de Segurança:
@@ -66,7 +67,7 @@ def _interactive():
         console.print("  1) Cifrar ficheiro (para mim)")
         console.print("  2) Cifrar ficheiro para contacto")
         console.print("  3) Decifrar ficheiro .cvault")
-        console.print("  4) Ver chave pública")
+        console.print("  4) Partilhar a minha chave pública (exportar PEM)")
         console.print("  5) Contactos (adicionar/listar/apagar)")
         console.print("  6) Sair")
         choice = Prompt.ask("Escolha", choices=["1", "2", "3", "4", "5", "6"], default="1")
@@ -77,7 +78,7 @@ def _interactive():
         elif choice == "3":
             _decrypt_flow(); Prompt.ask("\nEnter para voltar ao menu")
         elif choice == "4":
-            _show_public_key(); Prompt.ask("\nEnter para voltar ao menu")
+            _export_public_key_flow(); Prompt.ask("\nEnter para voltar ao menu")
         elif choice == "5":
             _contacts_menu()  # regressa sem prompt extra
         else:
@@ -117,14 +118,14 @@ def _contacts_menu():
 def _contact_add_flow(store: ContactsStore):
     console.print("\n[bold]Adicionar novo contacto[/bold]")
     name = Prompt.ask("Nome do contacto")
-    pem_path = Prompt.ask("Caminho para a chave pública (PEM)")
+    pem_path = Prompt.ask("Caminho do ficheiro da chave pública do contacto (PEM)")
     p = Path(_clean_path(pem_path)).expanduser().resolve()
     if not p.exists() or not p.is_file():
-        console.print("[red]Caminho inválido para PEM[/red]")
+        console.print("[red]Caminho inválido para ficheiro[/red]")
         return
-    pem = p.read_text(encoding="utf-8", errors="ignore")
+    pem_text = p.read_text(encoding="utf-8", errors="ignore")
     try:
-        store.add_contact(name, pem)
+        store.add_contact(name, pem_text)
         console.print("[green]Contacto adicionado com sucesso[/green]")
     except Exception as e:
         console.print(f"[red]Falha ao adicionar:[/red] {e}")
@@ -329,6 +330,26 @@ def public_key_cmd():
     ks = KeyStore(); ks.ensure_keys()
     console.print(ks.get_public_pem().decode("utf-8", errors="ignore"))
 
+def _export_public_key_flow():
+    """Exporta a chave pública para um ficheiro PEM fácil de partilhar."""
+    ks = KeyStore(); ks.ensure_keys()
+    default_path = Path.home() / "Documents" / "CipherVault_public_key.pem"
+    out_str = Prompt.ask("Caminho de saída para ficheiro PEM", default=str(default_path))
+    out_path = Path(_clean_path(out_str)).expanduser().resolve()
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    out_path.write_bytes(ks.get_public_pem())
+    console.print(f"[green]Chave pública exportada para:[/green] {out_path}")
+
+@cli.command(name="export-public-key")
+@click.option("--out", type=click.Path(path_type=Path), help="Caminho de saída para o PEM (por omissão: Documentos)")
+def export_public_key_cmd(out: Path | None):
+    """Exportar a chave pública para um ficheiro PEM para partilha."""
+    ks = KeyStore(); ks.ensure_keys()
+    if out is None:
+        out = (Path.home() / "Documents" / "CipherVault_public_key.pem").expanduser().resolve()
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_bytes(ks.get_public_pem())
+    console.print(f"[green]Chave pública exportada para:[/green] {out}")
 @cli.command(name="encrypt-for-contact")
 @click.argument("path", type=click.Path(path_type=Path))
 @click.option("--name", required=True, help="Nome do contacto a usar")
@@ -355,7 +376,7 @@ def contacts_list_cmd():
 @click.option("--name", required=True, help="Nome do contacto")
 @click.option("--pubkey", type=click.Path(path_type=Path), required=True, help="Caminho para PEM da chave pública")
 def contacts_add_cmd(name: str, pubkey: Path):
-    """Adicionar um contacto (nome + chave pública PEM)."""
+    """Adicionar um contacto (nome + caminho para ficheiro PEM de chave pública)."""
     store = ContactsStore()
     p = pubkey.expanduser().resolve()
     if not p.exists() or not p.is_file():
