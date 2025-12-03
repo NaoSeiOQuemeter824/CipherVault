@@ -1,36 +1,36 @@
 # ========================================
-# CipherVault - Application Standalone
+# CipherVault - Aplicação Autónoma
 # ========================================
-# Installer avec: pip install -r requirements.txt
-# Puis l'app fonctionne directement !
+# Instalar com: pip install -r requirements.txt
+# Depois a aplicação funciona diretamente!
 
-# Cryptographie (OBLIGATOIRE) - Inclut OpenSSL en interne
+# Criptografia (OBRIGATÓRIO) - Inclui OpenSSL internamente
 cryptography==42.0.0
 
-# Hachage de mots de passe sécurisé (pour authentification)
+# Hashing de palavras-passe seguro (para autenticação)
 argon2-cffi==23.1.0
 
-# Interface utilisateur (CLI améliorée)
-click==8.1.7          # Pour interface ligne de commande professionnelle
-colorama==0.4.6       # Couleurs dans terminal (Windows compatible)
-rich==13.7.0          # Interface CLI belle et moderne
+# Interface de utilizador (CLI melhorada)
+click==8.1.7          # Para interface de linha de comandos profissional
+colorama==0.4.6       # Cores no terminal (compatível com Windows)
+rich==13.7.0          # Interface CLI bonita e moderna
 
-# Barre de progression
-tqdm==4.66.1          # Pour afficher progression chiffrement
+# Barra de progresso
+tqdm==4.66.1          # Para mostrar progresso da cifragem
 
 # ========================================
-# Dépendances optionnelles
+# Dependências opcionais
 # ========================================
 
-# GUI (Interface graphique) - Décommenter si nécessaire
+# GUI (Interface gráfica) - Descomentar se necessário
 # PyQt6==6.6.1
-# ou tkinter (déjà inclus dans Python)
+# ou tkinter (já incluído no Python)
 
-# Base de données (si gestion d'utilisateurs)
-# python-dotenv==1.0.0  # Variables d'environnement
-# pydantic==2.5.3       # Validation de données
+# Base de dados (se gestão de utilizadores)
+# python-dotenv==1.0.0  # Variáveis de ambiente
+# pydantic==2.5.3       # Validação de dados
 
 # ========================================
-# Total: ~5 MB de dépendances
-# Application 100% standalone après installation !
+# Total: ~5 MB de dependências
+# Aplicação 100% autónoma após instalação!
 # ========================================

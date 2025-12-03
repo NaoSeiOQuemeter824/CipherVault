@@ -189,9 +189,9 @@ class SelfEncryptor:
 
         # === BLOCO: GERAÇÃO DE SEGREDOS SIMÉTRICOS ===
         # GERAÇÃO: chave simétrica AES-256 (32 bytes aleatórios)
-        aes_key = os.urandom(32)  # 256-bit
+        aes_key = os.urandom(32)  # 256 bits
         # GERAÇÃO: nonce GCM (12 bytes único) – nunca reutilizar com mesma chave
-        nonce = os.urandom(12)    # 96-bit recommended for GCM
+        nonce = os.urandom(12)    # 96 bits recomendado para GCM
         logger.debug("Gerada chave AES-256 e nonce GCM de 12 bytes.")
 
         # === BLOCO: CIFRAGEM SIMÉTRICA ===
@@ -235,7 +235,11 @@ class SelfEncryptor:
         # METADADOS: nome e tamanho para reconstrução simplificada na decifragem
         public_pem = self.keystore.get_public_pem()
         fp = self.keystore.get_fingerprint_hex()
-        metadata = {"filename": filename, "size": len(data)}
+        metadata = {
+            "filename": filename, 
+            "size": len(data),
+            "created_by": "CipherVault 1.5.0"
+        }
         metadata_json = json.dumps(metadata).encode("utf-8")
 
         if output_path is None:

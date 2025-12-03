@@ -43,7 +43,7 @@ def cli(ctx, debug: bool):
     CLI mínima para cifrar/decifrar um único ficheiro para uso próprio.
     Suporta qualquer ficheiro (recomenda-se .zip/.rar para pastas, ou imagens).
     """
-    # Configure logging once
+    # Configurar registo (logging) uma única vez
     log_level = logging.DEBUG if debug else logging.INFO
     logger = logging.getLogger()
     if not logger.handlers:
@@ -172,7 +172,7 @@ def _clean_path(path_str: str) -> str:
     if path_str is None:
         return ""
     s = path_str.strip()
-    # Strip matching quotes if present
+    # Remover aspas correspondentes se presentes
     if (s.startswith('"') and s.endswith('"')) or (s.startswith("'") and s.endswith("'")):
         s = s[1:-1].strip()
     return s
@@ -414,7 +414,7 @@ def keys_info():
         fp = "<unavailable>"
     table.add_row("Impressão digital da chave pública (SHA-256)", fp)
 
-    # Show a small snippet of the public key PEM to visually confirm
+    # Mostrar um pequeno excerto da chave pública PEM para confirmação visual
     try:
         pub_pem = ks.get_public_pem().decode("utf-8", errors="ignore").splitlines()
         snippet = []

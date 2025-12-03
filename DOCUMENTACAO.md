@@ -1,4 +1,4 @@
-# CipherVault – Documentação Completa do Protótipo (v1.4.1)
+# CipherVault – Documentação Completa do Protótipo (v1.5.0)
 
 Este documento central reúne numa só referência tudo o que é necessário para
 compreender, explicar e justificar o funcionamento do protótipo CipherVault.
@@ -8,16 +8,18 @@ organizado por módulos, comandos CLI, segurança, limitações e roadmap.
 ## Objetivo
 
 - Fornecer uma aplicação simples de linha de comandos para proteger ficheiros locais.
-- Cifrar e decifrar “para o próprio” (self), cifrar “para um contacto” e verificar autenticidade/integridade na versão 1.4.0.
+- Cifrar e decifrar “para o próprio” (self), cifrar “para um contacto” e verificar autenticidade/integridade na versão 1.5.0.
 - Usar uma abordagem criptográfica moderna e segura (híbrida: simétrica + assimétrica).
 - Manter um formato de contentor único (`.cvault`) auto‑descritivo.
 - Facilitar futura evolução para multi-destinatários e funcionalidades adicionais.
  - Gerir contactos (nome + chave pública) localmente via ficheiro PEM e exportar a própria chave pública para partilha.
+- Fornecer um Relatório de Segurança Unificado (Metadados + Integridade + Autenticidade).
 
 ## Arquitetura
 
 - Criptografia híbrida: RSA-4096 (assimétrico) + AES-256-GCM (simétrico).
 - Controlo de autenticidade: assinatura RSA-PSS sobre hash SHA-256 do conteúdo original.
+- Metadados: JSON no cabeçalho (não cifrado) para inspeção rápida.
 - Contentor `.cvault`: inclui metadados, chave pública, chave AES envolvida, assinatura, nonce, tag e ciphertext.
 - Armazenamento local das chaves: `~/.ciphervault/` contendo `private_key.pem` e `public_key.pem`.
 - Código organizado em módulos (`crypto.py` para operações de baixo nível, `cli.py` para interface e fluxo de utilização).
@@ -146,7 +148,7 @@ requirements.txt     -> lista de dependências Python
 - PEM para chave pública: legibilidade e interoperabilidade; poderá migrar para DER (opacidade) em versão 1.2.x.
 - Sem compressão automática: reduz complexidade; utilizador controla compressão (zip/rar) conforme necessidade.
 
-## Limitações Atuais (v1.4.1)
+## Limitações Atuais (v1.5.0)
 
 - Suporta um destinatário por contentor (cifragem para um contacto de cada vez).
 - Cabeçalho parcialmente legível (inclui PEM) – melhoria futura: versão opaca.
@@ -166,16 +168,17 @@ requirements.txt     -> lista de dependências Python
 - Gestão de contactos local (adicionar/listar/apagar) com validação do PEM público e fingerprint.
 - Remoção da visualização de chave privada no CLI (redução de superfície de risco).
 
-### 1.4.1 (Planeado)
-- Comando de inspeção detalhada (`inspect`) sem decifrar para disco (metadados completos, fingerprints).
-- Base para multi-destinatários (design do bloco extra de chave).
+### 1.5.0 (Atual)
+- Relatório de Segurança Unificado (Metadados + Integridade + Autenticidade).
+- Integração do comando `inspect` no `verify`.
+- Tradução completa de comentários e documentação para Português.
 
-### 1.5.0 (Planeado)
+### 1.6.0 (Planeado)
 - Multi-destinatários: vários blocos de chave AES envolvida (um por chave pública).
 - Flag `--also-me` para incluir o remetente como destinatário explícito.
 - Re-envelopar chave AES para adicionar destinatário posterior.
 
-### 1.5.x
+### 1.6.x
 - Modo assinatura apenas (gerar ficheiro + assinatura separada .sig).
 - Integração opcional com hash de diretórios e manifestos.
 
@@ -210,6 +213,7 @@ requirements.txt     -> lista de dependências Python
 - 1.3.1: Exportar chave pública para ficheiro PEM; adicionar contactos via caminho para ficheiro PEM; cifrar para um contacto (formato v2).
 - 1.4.0: Comando `verify` para verificação de autenticidade/integridade sem escrever ficheiro decifrado.
 - 1.4.1: Comandos `compare-files` (comparação direta SHA-256) e `compare-with-vault` (comparar conteúdo decifrado de .cvault com ficheiro claro).
+- 1.5.0: Relatório de Segurança Unificado; integração de inspeção e verificação; tradução integral de comentários e documentação.
 
 ## Esquema de Versionamento
 

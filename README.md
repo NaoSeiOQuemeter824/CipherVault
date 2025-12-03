@@ -1,6 +1,8 @@
-# CipherVault – Protótipo (v1.4.1)
+# CipherVault – Protótipo (v1.5.0)
 
-Aplicação CLI mínima para cifrar/decifrar/verificar um único ficheiro para uso próprio utilizando RSA-4096 + AES-256-GCM. Inclui gestão de contactos via ficheiro PEM, exportação da chave pública para partilha e cifrar “para um contacto”. Novo em 1.4.0: comando/verificação de autenticidade e integridade sem escrever o plaintext.
+Aplicação CLI mínima para cifrar/decifrar/verificar um único ficheiro para uso próprio utilizando RSA-4096 + AES-256-GCM. Inclui gestão de contactos via ficheiro PEM, exportação da chave pública para partilha e cifrar “para um contacto”. 
+
+**Novo em 1.5.0:** Relatório de Segurança Unificado (Comando `verify` agora mostra metadados, integridade e autenticidade num único painel) e mensagens de erro amigáveis em Português.
 
 ## Pré-requisitos
 
@@ -33,7 +35,7 @@ python src/main.py encrypt <caminho_ficheiro>
 # Decifrar ficheiro .cvault
 python src/main.py decrypt <caminho_ficheiro.cvault>
 
-# Verificar autenticidade/integridade (não produz ficheiro decifrado)
+# Verificar autenticidade, integridade e metadados (Relatório de Segurança)
 python src/main.py verify <caminho_ficheiro.cvault>
 
 # Ver chaves e impressões digitais
@@ -70,7 +72,7 @@ Notas:
   - Menor (+0.1.0): novas funcionalidades compatíveis (ex.: novo comando)
   - Maior (+1.0.0): alterações importantes/incompatíveis
 
-Versão atual: 1.4.1 (Comparação de ficheiros e com contentor; verificação de autenticidade/integridade; exportar PEM público; contactos; cifrar para contacto; docs PT-PT).
+Versão atual: 1.5.0 (Relatório de Segurança Unificado: Metadados + Integridade + Autenticidade; Mensagens de erro em PT-PT; Remoção do comando inspect isolado).
 
 ## Segurança (Resumo)
 
