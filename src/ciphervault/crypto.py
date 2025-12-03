@@ -645,3 +645,58 @@ class SelfEncryptor:
         )
         metadata["version"] = version
         return plaintext, metadata
+
+    def inspect_file(self, vault_path: Path) -> dict:
+        """Lê os metadados do cabeçalho .cvault sem decifrar o conteúdo.
+
+        Retorna dicionário com:
+          - version: int
+          - filename: str
+          - size: int
+          - sender_fp: str (fingerprint)
+          - recipient_fp: str (fingerprint)
+          - is_for_me: bool (se a chave de destino corresponde à minha)
+          - has_signature: bool (sempre True neste design)
+        """
+        vault_path = Path(vault_path)
+        if not vault_path.exists() or not vault_path.is_file():
+            raise FileNotFoundError(f"Ficheiro não encontrado: {vault_path}")
+
+        with open(vault_path, "rb") as f:
+            magic = f.read(6)
+            if magic != self.MAGIC:
+                raise ValueError("Formato de ficheiro inválido (magic)")
+            version = struct.unpack("B", f.read(1))[0]
+            if version not in (self.VERSION_SELF, self.VERSION_CONTACT):
+                raise ValueError(f"Versão não suportada: {version}")
+            flags = struct.unpack("B", f.read(1))[0]
+            meta_len = struct.unpack("H", f.read(2))[0]
+            metadata = json.loads(f.read(meta_len).decode("utf-8"))
+
+            if version == self.VERSION_SELF:
+                sender_pub_len = struct.unpack("H", f.read(2))[0]
+                sender_pub_pem = f.read(sender_pub_len)
+                recipient_pub_pem = sender_pub_pem
+            else:  # VERSION_CONTACT
+                sender_pub_len = struct.unpack("H", f.read(2))[0]
+                sender_pub_pem = f.read(sender_pub_len)
+                recipient_pub_len = struct.unpack("H", f.read(2))[0]
+                recipient_pub_pem = f.read(recipient_pub_len)
+
+        # Calcular fingerprints
+        sd = hashes.Hash(hashes.SHA256()); sd.update(sender_pub_pem); sender_fp = sd.finalize().hex()
+        rd = hashes.Hash(hashes.SHA256()); rd.update(recipient_pub_pem); recipient_fp = rd.finalize().hex()
+
+        # Verificar se é para mim
+        my_pub_pem = self.keystore.get_public_pem()
+        is_for_me = (recipient_pub_pem == my_pub_pem)
+
+        return {
+            "version": version,
+            "filename": metadata.get("filename", "Desconhecido"),
+            "size": metadata.get("size", 0),
+            "sender_fp": sender_fp,
+            "recipient_fp": recipient_fp,
+            "is_for_me": is_for_me,
+            "has_signature": True  # Por design, todos têm
+        }

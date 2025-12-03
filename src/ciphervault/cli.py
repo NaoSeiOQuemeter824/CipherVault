@@ -72,8 +72,9 @@ def _interactive():
         console.print("  5) Contactos (adicionar/listar/apagar)")
         console.print("  6) Verificar autenticidade de ficheiro .cvault")
         console.print("  7) Comparar dois ficheiros (detetar alteração)")
-        console.print("  8) Sair")
-        choice = Prompt.ask("Escolha", choices=["1", "2", "3", "4", "5", "6", "7", "8"], default="1")
+        console.print("  8) Inspecionar metadados (sem decifrar)")
+        console.print("  9) Sair")
+        choice = Prompt.ask("Escolha", choices=["1", "2", "3", "4", "5", "6", "7", "8", "9"], default="1")
         if choice == "1":
             _encrypt_flow(); Prompt.ask("\nEnter para voltar ao menu")
         elif choice == "2":
@@ -88,6 +89,8 @@ def _interactive():
             _verify_flow(); Prompt.ask("\nEnter para voltar ao menu")
         elif choice == "7":
             _compare_files_flow(); Prompt.ask("\nEnter para voltar ao menu")
+        elif choice == "8":
+            _inspect_flow(); Prompt.ask("\nEnter para voltar ao menu")
         else:
             sys.exit(0)
 
@@ -268,7 +271,11 @@ def _decrypt_flow():
         out_path = se.decrypt_file(p)
         console.print(f"\n[green]Sucesso![/green] Decifrado em: [bold]{out_path}[/bold]")
     except Exception as e:
-        console.print(f"[red]Falha ao decifrar:[/red] {e}")
+        msg = str(e)
+        if "Formato de ficheiro inválido" in msg or "decryption failed" in msg.lower() or "tag mismatch" in msg.lower():
+            console.print("[red]O ficheiro .cvault está corrompido ou foi adulterado.[/red]")
+        else:
+            console.print(f"[red]Falha ao decifrar:[/red] {e}")
 
 def _verify_flow():
     """Fluxo interativo para verificar autenticidade/integridade sem escrever plaintext."""
@@ -283,7 +290,11 @@ def _verify_flow():
     try:
         result = se.verify_authenticity(p)
     except Exception as e:
-        console.print(f"[red]Falha na verificação:[/red] {e}")
+        msg = str(e)
+        if "Formato de ficheiro inválido" in msg or "decryption failed" in msg.lower() or "tag mismatch" in msg.lower():
+            console.print("[red]O ficheiro .cvault está corrompido ou foi adulterado.[/red]")
+        else:
+            console.print(f"[red]Falha na verificação:[/red] {e}")
         return
     table = Table(title="Resultado da Verificação", show_lines=True)
     table.add_column("Campo", style="cyan")
@@ -349,8 +360,14 @@ def decrypt(path: Path):
     p = path.expanduser().resolve()
     if not p.exists() or not p.is_file() or p.suffix != ".cvault":
         raise click.ClickException("Indique um caminho válido para um ficheiro .cvault")
-    out = se.decrypt_file(p)
-    console.print(f"[green]Decifrado:[/green] {out}")
+    try:
+        out = se.decrypt_file(p)
+        console.print(f"[green]Decifrado:[/green] {out}")
+    except Exception as e:
+        msg = str(e)
+        if "Formato de ficheiro inválido" in msg or "decryption failed" in msg.lower() or "tag mismatch" in msg.lower():
+            raise click.ClickException("O ficheiro .cvault está corrompido ou foi adulterado.")
+        raise click.ClickException(f"Falha ao decifrar: {e}")
 
 
 @cli.command(name="keys")
@@ -431,6 +448,69 @@ def encrypt_for_contact_cmd(path: Path, name: str):
     out = se.encrypt_for_contact(p, contact["public_pem"].encode("utf-8"), recipient_name=name)
     console.print(f"[green]Cifrado para '{name}':[/green] {out}")
 
+def _inspect_flow():
+    """Fluxo interativo para inspecionar metadados de um ficheiro .cvault."""
+    console.print("\n[bold]Inspecionar Metadados .cvault[/bold]")
+    path_str = Prompt.ask("Caminho do ficheiro .cvault")
+    p = Path(_clean_path(path_str)).expanduser().resolve()
+    if not p.exists() or not p.is_file() or p.suffix != ".cvault":
+        console.print("[red]Caminho inválido ou não é .cvault[/red]")
+        return
+
+    ks = KeyStore(); ks.ensure_keys(); se = SelfEncryptor(ks)
+    try:
+        info = se.inspect_file(p)
+        table = Table(title=f"Metadados: {p.name}", show_lines=True)
+        table.add_column("Propriedade", style="cyan")
+        table.add_column("Valor", style="white")
+
+        table.add_row("Versão CipherVault", str(info["version"]))
+        table.add_row("Nome Original", info["filename"])
+        table.add_row("Tamanho Original", f"{info['size']} bytes")
+        table.add_row("Assinatura Digital", "Sim (RSA-PSS)" if info["has_signature"] else "Não")
+        
+        is_me = info["is_for_me"]
+        dest_str = "[green]Sim (Pode decifrar)[/green]" if is_me else "[red]Não (Chave privada diferente)[/red]"
+        table.add_row("Cifrado para mim?", dest_str)
+        
+        table.add_row("Fingerprint Remetente", info["sender_fp"][:16] + "...")
+        table.add_row("Fingerprint Destinatário", info["recipient_fp"][:16] + "...")
+
+        console.print(table)
+    except Exception as e:
+        console.print(f"[red]Erro ao ler metadados:[/red] {e}")
+
+@cli.command(name="inspect")
+@click.argument("path", type=click.Path(path_type=Path))
+def inspect_cmd(path: Path):
+    """Inspecionar metadados de um ficheiro .cvault sem decifrar."""
+    p = path.expanduser().resolve()
+    if not p.exists() or not p.is_file() or p.suffix != ".cvault":
+        raise click.ClickException("Indique um caminho válido para um ficheiro .cvault")
+    
+    ks = KeyStore(); ks.ensure_keys(); se = SelfEncryptor(ks)
+    try:
+        info = se.inspect_file(p)
+        table = Table(title=f"Metadados: {p.name}", show_lines=True)
+        table.add_column("Propriedade", style="cyan")
+        table.add_column("Valor", style="white")
+
+        table.add_row("Versão CipherVault", str(info["version"]))
+        table.add_row("Nome Original", info["filename"])
+        table.add_row("Tamanho Original", f"{info['size']} bytes")
+        table.add_row("Assinatura Digital", "Sim (RSA-PSS)" if info["has_signature"] else "Não")
+        
+        is_me = info["is_for_me"]
+        dest_str = "[green]Sim (Pode decifrar)[/green]" if is_me else "[red]Não (Chave privada diferente)[/red]"
+        table.add_row("Cifrado para mim?", dest_str)
+        
+        table.add_row("Fingerprint Remetente", info["sender_fp"][:16] + "...")
+        table.add_row("Fingerprint Destinatário", info["recipient_fp"][:16] + "...")
+
+        console.print(table)
+    except Exception as e:
+        raise click.ClickException(f"Erro ao ler metadados: {e}")
+
 @cli.command(name="verify")
 @click.argument("vault_file", type=click.Path(path_type=Path))
 def verify_cmd(vault_file: Path):
@@ -442,6 +522,9 @@ def verify_cmd(vault_file: Path):
     try:
         result = se.verify_authenticity(p)
     except Exception as e:
+        msg = str(e)
+        if "Formato de ficheiro inválido" in msg or "decryption failed" in msg.lower() or "tag mismatch" in msg.lower():
+            raise click.ClickException("O ficheiro .cvault está corrompido ou foi adulterado.")
         raise click.ClickException(f"Falha na verificação: {e}")
     console.print(json.dumps(result, indent=2, ensure_ascii=False))
 
