@@ -70,11 +70,10 @@ def _interactive():
         console.print("  3) Decifrar ficheiro .cvault")
         console.print("  4) Partilhar a minha chave pública (exportar PEM)")
         console.print("  5) Contactos (adicionar/listar/apagar)")
-        console.print("  6) Verificar autenticidade de ficheiro .cvault")
+        console.print("  6) Verificar autenticidade, integridade e metadados")
         console.print("  7) Comparar dois ficheiros (detetar alteração)")
-        console.print("  8) Inspecionar metadados (sem decifrar)")
-        console.print("  9) Sair")
-        choice = Prompt.ask("Escolha", choices=["1", "2", "3", "4", "5", "6", "7", "8", "9"], default="1")
+        console.print("  8) Sair")
+        choice = Prompt.ask("Escolha", choices=["1", "2", "3", "4", "5", "6", "7", "8"], default="1")
         if choice == "1":
             _encrypt_flow(); Prompt.ask("\nEnter para voltar ao menu")
         elif choice == "2":
@@ -89,8 +88,6 @@ def _interactive():
             _verify_flow(); Prompt.ask("\nEnter para voltar ao menu")
         elif choice == "7":
             _compare_files_flow(); Prompt.ask("\nEnter para voltar ao menu")
-        elif choice == "8":
-            _inspect_flow(); Prompt.ask("\nEnter para voltar ao menu")
         else:
             sys.exit(0)
 
@@ -278,41 +275,68 @@ def _decrypt_flow():
             console.print(f"[red]Falha ao decifrar:[/red] {e}")
 
 def _verify_flow():
-    """Fluxo interativo para verificar autenticidade/integridade sem escrever plaintext."""
+    """Fluxo interativo para verificar autenticidade, integridade e metadados."""
     ks = KeyStore(); ks.ensure_keys(); se = SelfEncryptor(ks)
-    console.print("\nIntroduza o [bold]caminho para o ficheiro .cvault[/bold] a verificar:")
+    console.print("\n[bold]Verificar Autenticidade, Integridade e Metadados[/bold]")
     path_str = Prompt.ask("Caminho do ficheiro .cvault")
     cleaned = _clean_path(path_str)
     p = Path(cleaned).expanduser().resolve()
     if not p.exists() or not p.is_file() or p.suffix != ".cvault":
         console.print("[red]Indique um caminho válido para um ficheiro .cvault[/red]")
         return
+    
     try:
+        # Primeiro obtemos metadados (sem verificar integridade profunda ainda)
+        info = se.inspect_file(p)
+        
+        # Depois verificamos integridade e autenticidade
         result = se.verify_authenticity(p)
+        
+        # Combinamos a informação
+        table = Table(title=f"Relatório de Segurança: {p.name}", show_lines=True)
+        table.add_column("Propriedade", style="cyan")
+        table.add_column("Valor", style="white")
+
+        # Metadados
+        table.add_row("Versão do Formato", str(info["version"]))
+        table.add_row("Nome Original", info["filename"])
+        table.add_row("Tamanho Original", f"{info['size']} bytes")
+        
+        # Chaves e Identidade
+        is_me = info["is_for_me"]
+        dest_str = "[green]Sim (Pode decifrar)[/green]" if is_me else "[red]Não (Chave privada diferente)[/red]"
+        table.add_row("Cifrado para mim?", dest_str)
+        table.add_row("Fingerprint Remetente", info["sender_fp"][:16] + "...")
+        table.add_row("Fingerprint Destinatário", info["recipient_fp"][:16] + "...")
+
+        # Segurança
+        int_ok = result.get("integrity_ok")
+        auth_ok = result.get("authenticity_ok")
+        
+        int_str = "[green]VÁLIDA (OK)[/green]" if int_ok else "[red]FALHA (Corrompido)[/red]"
+        auth_str = "[green]VÁLIDA (Assinatura OK)[/green]" if auth_ok else "[red]INVÁLIDA (Adulterado)[/red]"
+        
+        table.add_row("Integridade (AES-GCM)", int_str)
+        table.add_row("Autenticidade (RSA-PSS)", auth_str)
+
+        console.print(table)
+
+        if int_ok and auth_ok:
+            console.print("\n[green bold]CONCLUSÃO: O ficheiro é autêntico e íntegro.[/green bold]")
+            console.print("[green]Pode confiar neste conteúdo.[/green]")
+        elif int_ok and not auth_ok:
+            console.print("\n[yellow bold]ALERTA: A integridade técnica está ok, mas a assinatura digital falhou.[/yellow bold]")
+            console.print("[yellow]O ficheiro pode ter sido modificado ou a chave pública do remetente não corresponde.[/yellow]")
+        else:
+            console.print("\n[red bold]PERIGO: O ficheiro está corrompido ou foi adulterado.[/red bold]")
+            console.print("[red]Não tente decifrar este ficheiro.[/red]")
+
     except Exception as e:
         msg = str(e)
         if "Formato de ficheiro inválido" in msg or "decryption failed" in msg.lower() or "tag mismatch" in msg.lower():
-            console.print("[red]O ficheiro .cvault está corrompido ou foi adulterado.[/red]")
+            console.print("[red]O ficheiro .cvault está corrompido ou foi adulterado (Falha Crítica).[/red]")
         else:
-            console.print(f"[red]Falha na verificação:[/red] {e}")
-        return
-    table = Table(title="Resultado da Verificação", show_lines=True)
-    table.add_column("Campo", style="cyan")
-    table.add_column("Valor", style="white")
-    table.add_row("Versão", str(result.get("version")))
-    table.add_row("Filename", str(result.get("filename")))
-    table.add_row("Size", str(result.get("size")))
-    table.add_row("Sender FP", str(result.get("sender_fp"))[0:32] + "…")
-    table.add_row("Recipient FP", str(result.get("recipient_fp"))[0:32] + "…")
-    table.add_row("Integridade GCM", "OK" if result.get("integrity_ok") else "FALHA")
-    table.add_row("Autenticidade PSS", "OK" if result.get("authenticity_ok") else "FALHA")
-    console.print(table)
-    if result.get("integrity_ok") and result.get("authenticity_ok"):
-        console.print("[green]Ficheiro autêntico e íntegro.[/green]")
-    elif result.get("integrity_ok") and not result.get("authenticity_ok"):
-        console.print("[yellow]Integridade ok, MAS assinatura inválida.[/yellow]")
-    else:
-        console.print("[red]Integridade falhou - conteúdo não confiável.[/red]")
+            console.print(f"[red]Erro na verificação:[/red] {e}")
 
 def _compare_files_flow():
     """Compara dois ficheiros claros e mostra SHA-256 e se são iguais."""
@@ -449,84 +473,39 @@ def encrypt_for_contact_cmd(path: Path, name: str):
     console.print(f"[green]Cifrado para '{name}':[/green] {out}")
 
 def _inspect_flow():
-    """Fluxo interativo para inspecionar metadados de um ficheiro .cvault."""
-    console.print("\n[bold]Inspecionar Metadados .cvault[/bold]")
-    path_str = Prompt.ask("Caminho do ficheiro .cvault")
-    p = Path(_clean_path(path_str)).expanduser().resolve()
-    if not p.exists() or not p.is_file() or p.suffix != ".cvault":
-        console.print("[red]Caminho inválido ou não é .cvault[/red]")
-        return
-
-    ks = KeyStore(); ks.ensure_keys(); se = SelfEncryptor(ks)
-    try:
-        info = se.inspect_file(p)
-        table = Table(title=f"Metadados: {p.name}", show_lines=True)
-        table.add_column("Propriedade", style="cyan")
-        table.add_column("Valor", style="white")
-
-        table.add_row("Versão CipherVault", str(info["version"]))
-        table.add_row("Nome Original", info["filename"])
-        table.add_row("Tamanho Original", f"{info['size']} bytes")
-        table.add_row("Assinatura Digital", "Sim (RSA-PSS)" if info["has_signature"] else "Não")
-        
-        is_me = info["is_for_me"]
-        dest_str = "[green]Sim (Pode decifrar)[/green]" if is_me else "[red]Não (Chave privada diferente)[/red]"
-        table.add_row("Cifrado para mim?", dest_str)
-        
-        table.add_row("Fingerprint Remetente", info["sender_fp"][:16] + "...")
-        table.add_row("Fingerprint Destinatário", info["recipient_fp"][:16] + "...")
-
-        console.print(table)
-    except Exception as e:
-        console.print(f"[red]Erro ao ler metadados:[/red] {e}")
+    """(Obsoleto) Integrado no _verify_flow."""
+    pass
 
 @cli.command(name="inspect")
 @click.argument("path", type=click.Path(path_type=Path))
 def inspect_cmd(path: Path):
-    """Inspecionar metadados de um ficheiro .cvault sem decifrar."""
-    p = path.expanduser().resolve()
-    if not p.exists() or not p.is_file() or p.suffix != ".cvault":
-        raise click.ClickException("Indique um caminho válido para um ficheiro .cvault")
-    
-    ks = KeyStore(); ks.ensure_keys(); se = SelfEncryptor(ks)
-    try:
-        info = se.inspect_file(p)
-        table = Table(title=f"Metadados: {p.name}", show_lines=True)
-        table.add_column("Propriedade", style="cyan")
-        table.add_column("Valor", style="white")
-
-        table.add_row("Versão CipherVault", str(info["version"]))
-        table.add_row("Nome Original", info["filename"])
-        table.add_row("Tamanho Original", f"{info['size']} bytes")
-        table.add_row("Assinatura Digital", "Sim (RSA-PSS)" if info["has_signature"] else "Não")
-        
-        is_me = info["is_for_me"]
-        dest_str = "[green]Sim (Pode decifrar)[/green]" if is_me else "[red]Não (Chave privada diferente)[/red]"
-        table.add_row("Cifrado para mim?", dest_str)
-        
-        table.add_row("Fingerprint Remetente", info["sender_fp"][:16] + "...")
-        table.add_row("Fingerprint Destinatário", info["recipient_fp"][:16] + "...")
-
-        console.print(table)
-    except Exception as e:
-        raise click.ClickException(f"Erro ao ler metadados: {e}")
+    """(Obsoleto) Use 'verify' para ver metadados e segurança."""
+    console.print("[yellow]O comando 'inspect' foi integrado no 'verify'. Use 'verify' para ver metadados e segurança.[/yellow]")
+    verify_cmd(path)
 
 @cli.command(name="verify")
 @click.argument("vault_file", type=click.Path(path_type=Path))
 def verify_cmd(vault_file: Path):
-    """Verificar autenticidade e integridade de um ficheiro .cvault (JSON)."""
+    """Verificar autenticidade, integridade e metadados de um ficheiro .cvault."""
     ks = KeyStore(); ks.ensure_keys(); se = SelfEncryptor(ks)
     p = vault_file.expanduser().resolve()
     if not p.exists() or not p.is_file() or p.suffix != ".cvault":
         raise click.ClickException("Indique um caminho válido para um ficheiro .cvault")
     try:
+        # Obter metadados primeiro
+        info = se.inspect_file(p)
+        # Verificar segurança
         result = se.verify_authenticity(p)
+        
+        # Combinar resultados num único JSON para output de comando
+        combined = {**info, **result}
+        console.print(json.dumps(combined, indent=2, ensure_ascii=False))
+        
     except Exception as e:
         msg = str(e)
         if "Formato de ficheiro inválido" in msg or "decryption failed" in msg.lower() or "tag mismatch" in msg.lower():
             raise click.ClickException("O ficheiro .cvault está corrompido ou foi adulterado.")
         raise click.ClickException(f"Falha na verificação: {e}")
-    console.print(json.dumps(result, indent=2, ensure_ascii=False))
 
 @cli.command(name="compare-files")
 @click.argument("file_a", type=click.Path(path_type=Path))
