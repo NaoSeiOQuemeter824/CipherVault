@@ -42,9 +42,13 @@ def get_local_version():
         return "0.0.0"
     return "0.0.0"
 
+import time
+import random
+
 def get_remote_version():
     """Obtém a versão remota do GitHub"""
-    url = f"{RAW_BASE_URL}/src/ciphervault/__init__.py"
+    # Adiciona timestamp para evitar cache do GitHub Raw
+    url = f"{RAW_BASE_URL}/src/ciphervault/__init__.py?t={int(time.time())}"
     try:
         response = requests.get(url, timeout=5)
         if response.status_code == 200:
