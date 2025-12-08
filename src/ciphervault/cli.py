@@ -598,3 +598,4 @@ def contacts_delete_cmd(name: str):
     if not store.delete_contact(name):
         raise click.ClickException("Contacto não encontrado")
     console.print("[yellow]Contacto removido[/yellow]")
+# Force git update
