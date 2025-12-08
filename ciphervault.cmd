@@ -1,7 +1,7 @@
 @echo off
 rem CipherVault Launcher Wrapper
 rem Garante que o PowerShell corre com permissoes de execucao corretas
-title CipherVault v1.6.0
+title CipherVault v1.6.1
 
 powershell -ExecutionPolicy Bypass -File "launcher\launcher.ps1"
 if %errorlevel% neq 0 (

@@ -39,7 +39,7 @@ custom_theme = Theme({
     "success": "bold green",
     "header": "bold #bf00ff",  # Electric Purple / LED Violet
     "title": "bold #d02090",   # Violet Red
-    "option": "cyan",
+    "option": "bold #bf00ff",  # Same as header
 })
 console = Console(theme=custom_theme, force_terminal=True)
 
@@ -74,7 +74,7 @@ def _interactive():
     """
     while True:
         console.clear()
-        # Cabeçalho com estilo "Violet LED"
+        # Cabeçalho com estilo "Violet LED" e Versão Dinâmica
         console.print(Panel(
             f"[header]CipherVault[/header] [dim]v{__version__}[/dim]\n[white]Cifrar (self ou contacto) / Decifrar[/white]", 
             expand=False, 
@@ -92,7 +92,8 @@ def _interactive():
         console.print("  [option]7)[/option] Comparar dois ficheiros (detetar alteração)")
         console.print("  [option]8)[/option] Sair")
         
-        choice = Prompt.ask("Escolha", choices=["1", "2", "3", "4", "5", "6", "7", "8"], default="1")
+        # Prompt limpo sem (1) e sem default visível
+        choice = Prompt.ask("Escolha", choices=["1", "2", "3", "4", "5", "6", "7", "8"], show_choices=False, show_default=False, console=console)
         
         if choice == "8":
             sys.exit(0)
@@ -101,19 +102,19 @@ def _interactive():
         console.clear()
 
         if choice == "1":
-            _encrypt_flow(); Prompt.ask("\nEnter para voltar ao menu")
+            _encrypt_flow(); Prompt.ask("\nEnter para voltar ao menu", console=console)
         elif choice == "2":
-            _encrypt_for_contact_flow(); Prompt.ask("\nEnter para voltar ao menu")
+            _encrypt_for_contact_flow(); Prompt.ask("\nEnter para voltar ao menu", console=console)
         elif choice == "3":
-            _decrypt_flow(); Prompt.ask("\nEnter para voltar ao menu")
+            _decrypt_flow(); Prompt.ask("\nEnter para voltar ao menu", console=console)
         elif choice == "4":
-            _export_public_key_flow(); Prompt.ask("\nEnter para voltar ao menu")
+            _export_public_key_flow(); Prompt.ask("\nEnter para voltar ao menu", console=console)
         elif choice == "5":
             _contacts_menu()  # regressa sem prompt extra
         elif choice == "6":
-            _verify_flow(); Prompt.ask("\nEnter para voltar ao menu")
+            _verify_flow(); Prompt.ask("\nEnter para voltar ao menu", console=console)
         elif choice == "7":
-            _compare_files_flow(); Prompt.ask("\nEnter para voltar ao menu")
+            _compare_files_flow(); Prompt.ask("\nEnter para voltar ao menu", console=console)
 
 
 def _show_public_key():
@@ -133,7 +134,8 @@ def _contacts_menu():
         console.print("  [option]2)[/option] Listar contactos")
         console.print("  [option]3)[/option] Apagar contacto")
         console.print("  [option]4)[/option] Voltar")
-        c = Prompt.ask("Escolha", choices=["1", "2", "3", "4"], default="2")
+        
+        c = Prompt.ask("Escolha", choices=["1", "2", "3", "4"], show_choices=False, show_default=False, console=console)
         
         if c == "4":
             break
@@ -142,18 +144,18 @@ def _contacts_menu():
         
         if c == "1":
             _contact_add_flow(store)
-            Prompt.ask("\nEnter para continuar")
+            Prompt.ask("\nEnter para continuar", console=console)
         elif c == "2":
             _contact_list_flow(store)
-            Prompt.ask("\nEnter para continuar")
+            Prompt.ask("\nEnter para continuar", console=console)
         elif c == "3":
             _contact_delete_flow(store)
-            Prompt.ask("\nEnter para continuar")
+            Prompt.ask("\nEnter para continuar", console=console)
 
 def _contact_add_flow(store: ContactsStore):
     console.print("\n[bold]Adicionar novo contacto[/bold]")
-    name = Prompt.ask("Nome do contacto")
-    pem_path = Prompt.ask("Caminho do ficheiro da chave pública do contacto (PEM)")
+    name = Prompt.ask("Nome do contacto", console=console)
+    pem_path = Prompt.ask("Caminho do ficheiro da chave pública do contacto (PEM)", console=console)
     p = Path(_clean_path(pem_path)).expanduser().resolve()
     if not p.exists() or not p.is_file():
         console.print("[red]Caminho inválido para ficheiro[/red]")
@@ -183,7 +185,7 @@ def _contact_list_flow(store: ContactsStore):
     console.print(table)
 
 def _contact_delete_flow(store: ContactsStore):
-    name = Prompt.ask("Nome do contacto a apagar")
+    name = Prompt.ask("Nome do contacto a apagar", console=console)
     ok = store.delete_contact(name)
     if ok:
         console.print("[yellow]Contacto removido[/yellow]")
@@ -226,7 +228,7 @@ def _encrypt_flow():
     se = SelfEncryptor(ks)
 
     console.print("\nIntroduza o [bold]caminho para o ficheiro[/bold] a cifrar (ex.: .zip/.rar ou imagem):")
-    path_str = Prompt.ask("Caminho do ficheiro")
+    path_str = Prompt.ask("Caminho do ficheiro", console=console)
     try:
         in_path = _validate_input_path(path_str)
     except click.BadParameter as e:
@@ -254,14 +256,14 @@ def _encrypt_for_contact_flow():
     for idx, c in enumerate(items, start=1):
         table.add_row(str(idx), c.get("name",""), c.get("fingerprint","")[:32] + "…")
     console.print(table)
-    choice_str = Prompt.ask("Número do contacto")
+    choice_str = Prompt.ask("Número do contacto", console=console)
     try:
         idx = int(choice_str)
         contact = items[idx-1]
     except Exception:
         console.print("[red]Seleção inválida[/red]")
         return
-    path_str = Prompt.ask("Caminho do ficheiro a cifrar")
+    path_str = Prompt.ask("Caminho do ficheiro a cifrar", console=console)
     try:
         in_path = _validate_input_path(path_str)
     except click.BadParameter as e:
@@ -285,7 +287,7 @@ def _decrypt_flow():
     se = SelfEncryptor(ks)
 
     console.print("\nIntroduza o [bold]caminho para o ficheiro .cvault[/bold] a decifrar:")
-    path_str = Prompt.ask("Caminho do ficheiro .cvault")
+    path_str = Prompt.ask("Caminho do ficheiro .cvault", console=console)
     cleaned = _clean_path(path_str)
     p = Path(cleaned).expanduser().resolve()
     if not p.exists() or not p.is_file() or p.suffix != ".cvault":
@@ -306,7 +308,7 @@ def _verify_flow():
     """Fluxo interativo para verificar autenticidade, integridade e metadados."""
     ks = KeyStore(); ks.ensure_keys(); se = SelfEncryptor(ks)
     console.print("\n[bold]Verificar Autenticidade, Integridade e Metadados[/bold]")
-    path_str = Prompt.ask("Caminho do ficheiro .cvault")
+    path_str = Prompt.ask("Caminho do ficheiro .cvault", console=console)
     cleaned = _clean_path(path_str)
     p = Path(cleaned).expanduser().resolve()
     if not p.exists() or not p.is_file() or p.suffix != ".cvault":
@@ -369,8 +371,8 @@ def _verify_flow():
 def _compare_files_flow():
     """Compara dois ficheiros claros e mostra SHA-256 e se são iguais."""
     console.print("\n[bold]Comparar dois ficheiros[/bold]")
-    a_path = Path(_clean_path(Prompt.ask("Ficheiro A"))).expanduser().resolve()
-    b_path = Path(_clean_path(Prompt.ask("Ficheiro B"))).expanduser().resolve()
+    a_path = Path(_clean_path(Prompt.ask("Ficheiro A", console=console))).expanduser().resolve()
+    b_path = Path(_clean_path(Prompt.ask("Ficheiro B", console=console))).expanduser().resolve()
     if not a_path.exists() or not a_path.is_file() or not b_path.exists() or not b_path.is_file():
         console.print("[red]Indique caminhos válidos para ambos os ficheiros[/red]")
         return
@@ -468,7 +470,7 @@ def _export_public_key_flow():
     """Exporta a chave pública para um ficheiro PEM fácil de partilhar."""
     ks = KeyStore(); ks.ensure_keys()
     default_path = Path.home() / "Documents" / "CipherVault_public_key.pem"
-    out_str = Prompt.ask("Caminho de saída para ficheiro PEM", default=str(default_path))
+    out_str = Prompt.ask("Caminho de saída para ficheiro PEM", default=str(default_path), console=console)
     out_path = Path(_clean_path(out_str)).expanduser().resolve()
     out_path.parent.mkdir(parents=True, exist_ok=True)
     out_path.write_bytes(ks.get_public_pem())
@@ -598,4 +600,3 @@ def contacts_delete_cmd(name: str):
     if not store.delete_contact(name):
         raise click.ClickException("Contacto não encontrado")
     console.print("[yellow]Contacto removido[/yellow]")
-# Force git update
