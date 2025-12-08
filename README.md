@@ -1,17 +1,36 @@
-# CipherVault – Protótipo (v1.5.0)
+# CipherVault – Protótipo (v1.6.0)
 
 Aplicação CLI robusta para cifrar, decifrar e verificar ficheiros, utilizando criptografia híbrida (RSA-4096 + AES-256-GCM). Permite o uso pessoal e a partilha segura com contactos. Inclui gestão de chaves, exportação de chave pública e cifragem direcionada a destinatários específicos. 
 
-**Novo em 1.5.0:** Relatório de Segurança Unificado (Comando `verify` agora mostra metadados, integridade e autenticidade num único painel) e mensagens de erro amigáveis em Português.
+**Novo em 1.6.0:** Smart Launcher com atualização automática (verifica GitHub), gestão automática de ambiente virtual e dependências, e proteção contra downgrade.
 
 ## Pré-requisitos
 
 - Python 3.10+
 - Windows PowerShell (fornecido) ou outro terminal
+- Ligação à Internet (para atualizações automáticas)
 
-## Instalação
+## Instalação e Execução Rápida
 
-1) Criar o ambiente virtual (recomendado):
+A partir da versão 1.6.0, o **Smart Launcher** trata de tudo (ambiente virtual, dependências e atualizações).
+
+Basta executar o ficheiro de comando:
+
+```cmd
+.\ciphervault.cmd
+```
+
+O launcher irá:
+1. Verificar/Criar o ambiente virtual (`.venv`).
+2. Instalar/Atualizar dependências (`requirements.txt`).
+3. Verificar se existe uma nova versão no GitHub e atualizar automaticamente.
+4. Iniciar a aplicação.
+
+## Executar Manualmente (Avançado)
+
+Se preferir não usar o launcher:
+
+1) Criar o ambiente virtual:
    ```
    python -m venv .venv
    ```
@@ -26,15 +45,12 @@ Aplicação CLI robusta para cifrar, decifrar e verificar ficheiros, utilizando 
    pip install -r requirements.txt
    ```
 
-## Executar o Protótipo
+4) Executar:
+   ```
+   python src/main.py
+   ```
 
-Menu interativo (cifrar/decifrar):
-
-```
-python src/main.py
-```
-
-Comandos diretos:
+## Comandos Disponíveis
 
 ```
 # Cifrar para si
@@ -80,7 +96,7 @@ Notas:
   - Menor (+0.1.0): novas funcionalidades compatíveis (ex.: novo comando)
   - Maior (+1.0.0): alterações importantes/incompatíveis
 
-Versão atual: 1.5.0 (Relatório de Segurança Unificado: Metadados + Integridade + Autenticidade; Mensagens de erro em PT-PT; Remoção do comando inspect isolado).
+Versão atual: 1.6.0 (Smart Launcher, Auto-update, Anti-downgrade, Correções de interface).
 
 ## Segurança (Resumo)
 
