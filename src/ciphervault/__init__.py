@@ -7,6 +7,6 @@ Incrementar números de versão em alterações significativas:
  PATCH (1.0.X): pequenas melhorias / correções / instrumentação
 """
 
-__version__ = "1.6.0"
+__version__ = "1.6.1"
 
 __all__ = ["crypto", "__version__"]
