@@ -34,3 +34,7 @@ tqdm==4.66.1          # Para mostrar progresso da cifragem
 # Total: ~5 MB de dependências
 # Aplicação 100% autónoma após instalação!
 # ========================================
+
+# Auto-update dependencies
+requests>=2.31.0
+packaging>=23.0
