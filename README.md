@@ -1,6 +1,6 @@
 # CipherVault – Protótipo (v1.5.0)
 
-Aplicação CLI mínima para cifrar/decifrar/verificar um único ficheiro para uso próprio utilizando RSA-4096 + AES-256-GCM. Inclui gestão de contactos via ficheiro PEM, exportação da chave pública para partilha e cifrar “para um contacto”. 
+Aplicação CLI robusta para cifrar, decifrar e verificar ficheiros, utilizando criptografia híbrida (RSA-4096 + AES-256-GCM). Permite o uso pessoal e a partilha segura com contactos. Inclui gestão de chaves, exportação de chave pública e cifragem direcionada a destinatários específicos. 
 
 **Novo em 1.5.0:** Relatório de Segurança Unificado (Comando `verify` agora mostra metadados, integridade e autenticidade num único painel) e mensagens de erro amigáveis em Português.
 
@@ -11,12 +11,20 @@ Aplicação CLI mínima para cifrar/decifrar/verificar um único ficheiro para u
 
 ## Instalação
 
-1) Criar/ativar um ambiente virtual (opcional mas recomendado)
-2) Instalar dependências:
+1) Criar o ambiente virtual (recomendado):
+   ```
+   python -m venv .venv
+   ```
 
-```
-pip install -r requirements.txt
-```
+2) Ativar o ambiente virtual:
+   ```
+   .\.venv\Scripts\Activate.ps1
+   ```
+
+3) Instalar dependências:
+   ```
+   pip install -r requirements.txt
+   ```
 
 ## Executar o Protótipo
 
