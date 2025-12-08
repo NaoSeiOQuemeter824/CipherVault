@@ -170,7 +170,8 @@ def _contact_add_flow(store: ContactsStore):
 def _contact_list_flow(store: ContactsStore):
     items = store.list_contacts()
     table = Table(title="Contactos", show_lines=True)
-    table.add_column("Nome", style="cyan", no_wrap=True)
+    # MUDANÇA AQUI: style="option" para usar a cor violeta definida no tema
+    table.add_column("Nome", style="option", no_wrap=True)
     table.add_column("Fingerprint (SHA-256)", style="white")
     table.add_column("Excerto PEM", style="white")
     for c in items:
@@ -474,7 +475,8 @@ def _export_public_key_flow():
     out_path = Path(_clean_path(out_str)).expanduser().resolve()
     out_path.parent.mkdir(parents=True, exist_ok=True)
     out_path.write_bytes(ks.get_public_pem())
-    console.print(f"[green]Chave pública exportada para:[/green] {out_path}")
+    # MUDANÇA AQUI: [option] para usar a cor violeta no caminho
+    console.print(f"[green]Chave pública exportada para:[/green] [option]{out_path}[/option]")
 
 @cli.command(name="export-public-key")
 @click.option("--out", type=click.Path(path_type=Path), help="Caminho de saída para o PEM (por omissão: Documentos)")
