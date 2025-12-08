@@ -1,7 +1,8 @@
-# CipherVault – Protótipo (v1.6.0)
+# CipherVault – Protótipo (v1.6.1)
 
 Aplicação CLI robusta para cifrar, decifrar e verificar ficheiros, utilizando criptografia híbrida (RSA-4096 + AES-256-GCM). Permite o uso pessoal e a partilha segura com contactos. Inclui gestão de chaves, exportação de chave pública e cifragem direcionada a destinatários específicos. 
 
+**Novo em 1.6.1:** Interface visual renovada com tema "Violet LED", limpeza automática de ecrã para maior clareza e correções de usabilidade.
 **Novo em 1.6.0:** Smart Launcher com atualização automática (verifica GitHub), gestão automática de ambiente virtual e dependências, e proteção contra downgrade.
 
 ## Pré-requisitos
@@ -96,7 +97,7 @@ Notas:
   - Menor (+0.1.0): novas funcionalidades compatíveis (ex.: novo comando)
   - Maior (+1.0.0): alterações importantes/incompatíveis
 
-Versão atual: 1.6.0 (Smart Launcher, Auto-update, Anti-downgrade, Correções de interface).
+Versão atual: 1.6.1 (Interface Violet LED, Limpeza de ecrã, Smart Launcher, Auto-update).
 
 ## Segurança (Resumo)
 

@@ -1,4 +1,4 @@
-# CipherVault – Documentação Completa do Protótipo (v1.5.0)
+# CipherVault – Documentação Completa do Protótipo (v1.6.1)
 
 Este documento central reúne numa só referência tudo o que é necessário para
 compreender, explicar e justificar o funcionamento do protótipo CipherVault.
@@ -8,12 +8,13 @@ organizado por módulos, comandos CLI, segurança, limitações e roadmap.
 ## Objetivo
 
 - Fornecer uma aplicação simples de linha de comandos para proteger ficheiros locais.
-- Cifrar e decifrar “para o próprio” (self), cifrar “para um contacto” e verificar autenticidade/integridade na versão 1.5.0.
+- Cifrar e decifrar “para o próprio” (self), cifrar “para um contacto” e verificar autenticidade/integridade.
 - Usar uma abordagem criptográfica moderna e segura (híbrida: simétrica + assimétrica).
 - Manter um formato de contentor único (`.cvault`) auto‑descritivo.
 - Facilitar futura evolução para multi-destinatários e funcionalidades adicionais.
- - Gerir contactos (nome + chave pública) localmente via ficheiro PEM e exportar a própria chave pública para partilha.
+- Gerir contactos (nome + chave pública) localmente via ficheiro PEM e exportar a própria chave pública para partilha.
 - Fornecer um Relatório de Segurança Unificado (Metadados + Integridade + Autenticidade).
+- **Novo na v1.6.x:** Smart Launcher para gestão automática de ambiente e atualizações, e interface visual melhorada (Tema "Violet LED").
 
 ## Arquitetura
 
