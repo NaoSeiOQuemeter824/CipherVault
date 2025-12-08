@@ -10,8 +10,18 @@ $PipExe = "$VenvPath\Scripts\pip.exe"
 $UpdaterScript = "$ProjectRoot\launcher\updater.py"
 $MainScript = "$ProjectRoot\src\main.py"
 $ReqFile = "$ProjectRoot\requirements.txt"
+$VersionFile = "$ProjectRoot\src\ciphervault\__init__.py"
 
-Write-Host "===== CipherVault Launcher v1.6.2 =====" -ForegroundColor Cyan
+# Obter versão dinâmica
+$LauncherVersion = "Unknown"
+if (Test-Path $VersionFile) {
+    $Content = Get-Content $VersionFile -Raw
+    if ($Content -match '__version__\s*=\s*["'']([^"'']+)["'']') {
+        $LauncherVersion = $Matches[1]
+    }
+}
+
+Write-Host "===== CipherVault Launcher v$LauncherVersion =====" -ForegroundColor Cyan
 
 # 1. Bootstrapping: Verificar e Criar Ambiente Virtual
 if (-not (Test-Path $VenvPath)) {

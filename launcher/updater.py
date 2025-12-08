@@ -85,18 +85,51 @@ def download_and_update():
             raise Exception("Estrutura de atualização inválida (pasta src não encontrada no zip)")
 
         # 3. Swap (Troca)
-        logger.info("A aplicar atualização (Substituindo pasta src/)...")
+        logger.info("A aplicar atualização...")
+        
+        # Atualizar src/
         if SRC_DIR.exists():
             shutil.rmtree(SRC_DIR)
-        
         shutil.move(str(new_src), str(SRC_DIR))
+        logger.info("Código fonte (src) atualizado.")
+
+        # Atualizar launcher/
+        new_launcher = extracted_root / "launcher"
+        local_launcher = BASE_DIR / "launcher"
+        if new_launcher.exists():
+            # Nota: Atualizar o launcher enquanto ele corre pode ser arriscado, 
+            # mas como é um script interpretado carregado em memória, geralmente funciona no Windows 
+            # se não estivermos a substituir o próprio python.exe.
+            # Vamos tentar copiar ficheiro a ficheiro para evitar bloquear a pasta.
+            if not local_launcher.exists():
+                local_launcher.mkdir()
+            
+            for item in new_launcher.glob("*"):
+                dst = local_launcher / item.name
+                try:
+                    if item.is_dir():
+                        if dst.exists(): shutil.rmtree(dst)
+                        shutil.copytree(item, dst)
+                    else:
+                        shutil.copy2(item, dst)
+                except Exception as e:
+                    logger.warning(f"Não foi possível atualizar {item.name}: {e}")
+            logger.info("Launcher atualizado.")
+
+        # Atualizar Documentação e outros ficheiros raiz
+        for file_name in ["README.md", "DOCUMENTACAO.md", "requirements.txt", "ciphervault.cmd"]:
+            src_file = extracted_root / file_name
+            dst_file = BASE_DIR / file_name
+            if src_file.exists():
+                try:
+                    shutil.copy2(src_file, dst_file)
+                    logger.info(f"{file_name} atualizado.")
+                except Exception as e:
+                    logger.warning(f"Erro ao atualizar {file_name}: {e}")
         
-        # Atualizar requirements.txt se existir novo
-        new_reqs = extracted_root / "requirements.txt"
-        local_reqs = BASE_DIR / "requirements.txt"
-        if new_reqs.exists():
-            shutil.move(str(new_reqs), str(local_reqs))
-            logger.info("requirements.txt atualizado.")
+        # Atualizar requirements.txt se existir novo (já tratado acima, mas mantendo lógica de limpeza)
+        # Limpeza
+
 
         logger.info("Atualização concluída com sucesso!")
         return True
