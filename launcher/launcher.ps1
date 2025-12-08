@@ -11,7 +11,7 @@ $UpdaterScript = "$ProjectRoot\launcher\updater.py"
 $MainScript = "$ProjectRoot\src\main.py"
 $ReqFile = "$ProjectRoot\requirements.txt"
 
-Write-Host "===== CipherVault Launcher v1.6.0 =====" -ForegroundColor Cyan
+Write-Host "===== CipherVault Launcher v1.6.2 =====" -ForegroundColor Cyan
 
 # 1. Bootstrapping: Verificar e Criar Ambiente Virtual
 if (-not (Test-Path $VenvPath)) {
