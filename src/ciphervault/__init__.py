@@ -1,4 +1,4 @@
-"""Inicialização do pacote CipherVault.
+﻿"""Inicialização do pacote CipherVault.
 
 Contém a string de versão da biblioteca e exporta módulos públicos.
 Incrementar números de versão em alterações significativas:
@@ -7,6 +7,6 @@ Incrementar números de versão em alterações significativas:
  PATCH (1.0.X): pequenas melhorias / correções / instrumentação
 """
 
-__version__ = "1.5.0"  # Relatório de Segurança Unificado (Metadados + Integridade + Autenticidade)
+__version__ = "1.6.0"
 
 __all__ = ["crypto", "__version__"]

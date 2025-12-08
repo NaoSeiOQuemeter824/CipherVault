@@ -26,3 +26,8 @@ dist/
 # Local data
 .env
 .secret*
+
+# Documentation / Reports to exclude
+RELATORIO_V1.6.md
+analise_tecnica_chapitre4.md
+assets_chapitre3.md

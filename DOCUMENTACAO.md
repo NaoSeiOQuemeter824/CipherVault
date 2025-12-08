@@ -168,15 +168,15 @@ requirements.txt     -> lista de dependências Python
 - Gestão de contactos local (adicionar/listar/apagar) com validação do PEM público e fingerprint.
 - Remoção da visualização de chave privada no CLI (redução de superfície de risco).
 
-### 1.5.0 (Atual)
+### 1.6.0 (Atual)
+- **Smart Launcher:** Sistema de arranque inteligente que gere instalação de dependências e atualizações automáticas.
+- **Auto-Update:** Verificação de versão contra repositório remoto e atualização "in-place" sem afetar dados do utilizador.
+- **Multi-destinatários:** (Preparação) Estrutura de código pronta para suportar múltiplos destinatários.
+
+### 1.5.0
 - Relatório de Segurança Unificado (Metadados + Integridade + Autenticidade).
 - Integração do comando `inspect` no `verify`.
 - Tradução completa de comentários e documentação para Português.
-
-### 1.6.0 (Planeado)
-- Multi-destinatários: vários blocos de chave AES envolvida (um por chave pública).
-- Flag `--also-me` para incluir o remetente como destinatário explícito.
-- Re-envelopar chave AES para adicionar destinatário posterior.
 
 ### 1.6.x
 - Modo assinatura apenas (gerar ficheiro + assinatura separada .sig).
