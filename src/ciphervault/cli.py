@@ -10,6 +10,7 @@ from rich.console import Console
 from rich.panel import Panel
 from rich.prompt import Prompt
 from rich.table import Table
+from rich.theme import Theme
 
 from .crypto import KeyStore, SelfEncryptor
 from .contacts import ContactsStore
@@ -30,7 +31,17 @@ from . import __version__
 #   - Chave pública é segura para divulgação / embutida no contentor.
 # =============================================================
 
-console = Console()
+# Tema "Violet LED"
+custom_theme = Theme({
+    "info": "dim cyan",
+    "warning": "magenta",
+    "danger": "bold red",
+    "success": "bold green",
+    "header": "bold #bf00ff",  # Electric Purple / LED Violet
+    "title": "bold #d02090",   # Violet Red
+    "option": "cyan",
+})
+console = Console(theme=custom_theme, force_terminal=True)
 
 
 @click.group(invoke_without_command=True)
@@ -38,9 +49,9 @@ console = Console()
 @click.version_option(version=__version__)
 @click.pass_context
 def cli(ctx, debug: bool):
-    """CipherVault Protótipo
+    """CipherVault
 
-    CLI mínima para cifrar/decifrar um único ficheiro para uso próprio.
+    CLI robusta para cifrar/decifrar ficheiros.
     Suporta qualquer ficheiro (recomenda-se .zip/.rar para pastas, ou imagens).
     """
     # Configurar registo (logging) uma única vez
@@ -63,17 +74,32 @@ def _interactive():
     """
     while True:
         console.clear()
-        console.print(Panel("[bold cyan]CipherVault Protótipo[/bold cyan]\nCifrar (self ou contacto) / Decifrar", expand=False))
+        # Cabeçalho com estilo "Violet LED"
+        console.print(Panel(
+            f"[header]CipherVault[/header] [dim]v{__version__}[/dim]\n[white]Cifrar (self ou contacto) / Decifrar[/white]", 
+            expand=False, 
+            border_style="header",
+            title="[title]MENU PRINCIPAL[/title]",
+            subtitle="[dim]Secure Storage[/dim]"
+        ))
         console.print("\n[bold]Ações:[/bold]")
-        console.print("  1) Cifrar ficheiro (para mim)")
-        console.print("  2) Cifrar ficheiro para contacto")
-        console.print("  3) Decifrar ficheiro .cvault")
-        console.print("  4) Partilhar a minha chave pública (exportar PEM)")
-        console.print("  5) Contactos (adicionar/listar/apagar)")
-        console.print("  6) Verificar autenticidade, integridade e metadados")
-        console.print("  7) Comparar dois ficheiros (detetar alteração)")
-        console.print("  8) Sair")
+        console.print("  [option]1)[/option] Cifrar ficheiro (para mim)")
+        console.print("  [option]2)[/option] Cifrar ficheiro para contacto")
+        console.print("  [option]3)[/option] Decifrar ficheiro .cvault")
+        console.print("  [option]4)[/option] Partilhar a minha chave pública (exportar PEM)")
+        console.print("  [option]5)[/option] Contactos (adicionar/listar/apagar)")
+        console.print("  [option]6)[/option] Verificar autenticidade, integridade e metadados")
+        console.print("  [option]7)[/option] Comparar dois ficheiros (detetar alteração)")
+        console.print("  [option]8)[/option] Sair")
+        
         choice = Prompt.ask("Escolha", choices=["1", "2", "3", "4", "5", "6", "7", "8"], default="1")
+        
+        if choice == "8":
+            sys.exit(0)
+
+        # Limpar ecrã antes de executar o comando selecionado
+        console.clear()
+
         if choice == "1":
             _encrypt_flow(); Prompt.ask("\nEnter para voltar ao menu")
         elif choice == "2":
@@ -88,8 +114,6 @@ def _interactive():
             _verify_flow(); Prompt.ask("\nEnter para voltar ao menu")
         elif choice == "7":
             _compare_files_flow(); Prompt.ask("\nEnter para voltar ao menu")
-        else:
-            sys.exit(0)
 
 
 def _show_public_key():
@@ -104,12 +128,18 @@ def _contacts_menu():
     store = ContactsStore()
     while True:
         console.clear()
-        console.print(Panel("[bold cyan]Contactos[/bold cyan]", expand=False))
-        console.print("  1) Adicionar contacto")
-        console.print("  2) Listar contactos")
-        console.print("  3) Apagar contacto")
-        console.print("  4) Voltar")
+        console.print(Panel("[header]Contactos[/header]", expand=False, border_style="header"))
+        console.print("  [option]1)[/option] Adicionar contacto")
+        console.print("  [option]2)[/option] Listar contactos")
+        console.print("  [option]3)[/option] Apagar contacto")
+        console.print("  [option]4)[/option] Voltar")
         c = Prompt.ask("Escolha", choices=["1", "2", "3", "4"], default="2")
+        
+        if c == "4":
+            break
+            
+        console.clear()
+        
         if c == "1":
             _contact_add_flow(store)
             Prompt.ask("\nEnter para continuar")
@@ -119,8 +149,6 @@ def _contacts_menu():
         elif c == "3":
             _contact_delete_flow(store)
             Prompt.ask("\nEnter para continuar")
-        else:
-            break
 
 def _contact_add_flow(store: ContactsStore):
     console.print("\n[bold]Adicionar novo contacto[/bold]")
